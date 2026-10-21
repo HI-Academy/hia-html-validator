@@ -12,6 +12,7 @@ const { auditVisualReview } = require("../rules/visual-review-rules.cjs");
 const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
+const { configuration } = require("../core/cli-support.cjs");
 
 const MANUAL_GATES = [
   ["source-fidelity", "Source fidelity, wording, mathematics, answers and diagrams checked against the authoritative source."],
@@ -610,7 +611,7 @@ async function main() {
   const configFile = path.resolve(args.config);
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) throw new Error(`Lesson file does not exist: ${file}`);
   if (!fs.existsSync(configFile)) throw new Error(`Rule configuration does not exist: ${configFile}`);
-  const config = JSON.parse(fs.readFileSync(configFile, "utf8"));
+  const config = configuration(configFile, "lesson");
   const source = fs.readFileSync(file, "utf8");
   const slides = extractSlides(source);
   const answerPages = slides.filter((slide) => /\bpractice-answers\b/.test(slide.html) && /a$/i.test(slide.id));
