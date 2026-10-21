@@ -135,6 +135,27 @@ config.complementaryChecks.proseTypography.enabled=false;
   await check('sentence contract configurable',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.equal(has(xs,'B35-TYPE-003'),false),disabledRole);
   const foundContrast=await check('contrast actionable evidence',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.ok(has(xs,'B35-TYPE-003')),proseRole);
   const contrast=foundContrast.find(x=>x.rule==='B35-TYPE-003');assert.equal(contrast.evidence.visualHarmonyVerified,false);assert.ok(contrast.evidence.measurements.length);for(const key of ['expected','impact','suggestedAction','confidence','verification','constraints'])assert.ok(contrast[key]);
+  const roleStyle=clone();roleStyle.complementaryChecks.proseTypography.enabled=true;
+  const approvedQuestion='<p class="prompt" style="font-family:Nunito;font-weight:900">Compare <span data-b35-formula style="font-family:Cambria Math;font-weight:700"><math style="font-family:Cambria Math;font-weight:700"><mfrac><mn>16</mn><mn>20</mn></mfrac></math></span> with the whole.</p>';
+  for(const [name,html,expected] of [
+    ['approved question roles pass',approvedQuestion,false],
+    ['question weight must be exactly 900',approvedQuestion.replace('font-weight:900','font-weight:800'),true],
+    ['question prose family is explicit',approvedQuestion.replace('font-family:Nunito','font-family:Arial'),true],
+    ['question math weight must be exactly 700',approvedQuestion.replaceAll('font-weight:700','font-weight:600'),true],
+    ['question math family is explicit',approvedQuestion.replaceAll('font-family:Cambria Math','font-family:Georgia'),true],
+    ['solution explanation 800 passes','<p class="step-solution" style="font-family:Nunito;font-weight:800">Check the result.</p>',false],
+    ['solution explanation 700 warns','<p class="step-solution" style="font-family:Nunito;font-weight:700">Check the result.</p>',true],
+    ['solution math-only rows are not prose','<p class="step-solution" style="font-family:Cambria Math;font-weight:400"><math><mn>25</mn></math></p>',false],
+    ['hidden role waits for reveal',approvedQuestion.replace('class="prompt"','class="prompt" hidden').replace('font-weight:900','font-weight:800'),false],
+    ['structural exponent may differ',approvedQuestion.replace('<mfrac><mn>16</mn><mn>20</mn></mfrac>','<msup><mn>2</mn><mn style="font-weight:400">3</mn></msup>'),false],
+    ['labels may use different fonts',approvedQuestion.replace('Compare','<span class="tag" style="font-family:Arial;font-weight:400">LABEL</span> Compare'),false],
+    ['documented role variation is explicit',approvedQuestion.replace('class="prompt"','class="prompt" data-b35-allow-prose-typography="font comparison"').replace('font-weight:900','font-weight:400'),false],
+    ['nested question does not inherit solution prose contract','<div class="step-solution">'+approvedQuestion+'</div>',false]
+  ])await check(name,wrap(html),xs=>assert.equal(has(xs,'B35-TYPE-004'),expected,name+': '+JSON.stringify(xs)),roleStyle);
+  const customRole=structuredClone(roleStyle);customRole.complementaryChecks.proseTypography.roleContracts[0].fontWeight=800;
+  await check('role font weights configurable',wrap(approvedQuestion.replace('font-weight:900','font-weight:800')),xs=>assert.equal(has(xs,'B35-TYPE-004'),false),customRole);
+  const roleFindings=await check('role contract actionable evidence',wrap(approvedQuestion.replace('font-weight:900','font-weight:700')),xs=>assert.ok(has(xs,'B35-TYPE-004')),roleStyle);
+  const roleFinding=roleFindings.find(x=>x.rule==='B35-TYPE-004');assert.equal(roleFinding.evidence.expectedWeight,900);assert.equal(roleFinding.evidence.visualHarmonyVerified,false);for(const key of ['selector','expected','suggestedAction','confidence','verification','constraints'])assert.ok(roleFinding[key]);
   const lessonIndex=process.argv.indexOf('--chapter8');
   if(lessonIndex>=0){
     await page.setViewportSize({width:960,height:540});await page.goto(pathToFileURL(path.resolve(process.argv[lessonIndex+1])).href);await page.evaluate(()=>document.fonts.ready);

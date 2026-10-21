@@ -100,6 +100,33 @@ function auditComplementaryChecks(config) {
         verification:['Review the complete sentence and expression at lesson size and enlarged resolution after fonts load.','Recheck every affected reveal, wrapping, fraction geometry and panel bounds.'],
         constraints:['Preserve operands, units and teaching sequence.','Matching CSS weights or a symbol-review approval cannot certify or waive this role check.']};
       const handledProse=new Set();
+      const roleContracts=proseTypography.roleContracts||[];
+      const scopes=roleContracts.map(role=>role.selector).filter(Boolean).join(',');
+      const handledRoles=new Map();
+      for(const role of roleContracts)for(const owner of select(slide,role.selector)){
+        if(!visible(owner)||owner.closest('[data-b35-allow-prose-typography]'))continue;
+        const measurements=[];
+        for(const node of [owner,...owner.querySelectorAll('*')]){
+          if(!visible(node)||node.closest(excluded)||node.closest('[data-b35-allow-prose-typography]'))continue;
+          let scope;try{scope=node.closest(scopes);}catch{continue;}
+          if(scope!==owner)continue;
+          if(node.closest('msup > :not(:first-child),msub > :not(:first-child),msubsup > :not(:first-child),mroot > :not(:first-child)'))continue;
+          const text=[...node.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join(' ').trim();
+          if(!text)continue;
+          const mathematical=!!node.closest(maths);
+          if(role.kind==='math'?!mathematical:mathematical||!isProse(text))continue;
+          if(handledRoles.get(node)?.has(role.name))continue;
+          if(!handledRoles.has(node))handledRoles.set(node,new Set());handledRoles.get(node).add(role.name);
+          const style=getComputedStyle(node),actualFamily=style.fontFamily.split(',')[0].replace(/["']/g,'').trim(),actualWeight=Number(style.fontWeight)||400;
+          if((role.fontFamily&&actualFamily.toLowerCase()!==role.fontFamily.toLowerCase())||(Number.isFinite(role.fontWeight)&&actualWeight!==role.fontWeight))
+            measurements.push({selector:pathFor(node),text:text.slice(0,100),actualFamily,actualWeight});
+        }
+        if(measurements.length)emit('B35-TYPE-004',policy.roleTypographySeverity||'warning',
+          role.name+' must use '+role.fontFamily+' '+role.fontWeight+'.',owner,
+          {kind:'declared-font-role-contract',role:role.name,expectedFamily:role.fontFamily,expectedWeight:role.fontWeight,measurements,visualHarmonyVerified:false},
+          {...guidance,expected:'Apply the configured family and weight for '+role.name+' consistently across lesson pages.',
+            suggestedAction:'Use a shared role style for prose and complete mathematical expressions. Preserve structural fraction/script sizing; do not style an entire prose paragraph as mathematics.'});
+      }
       for(const owner of select(slide,proseTypography.selectors)){
         if(!visible(owner)||owner.closest('[data-b35-allow-prose-typography]'))continue;
         const prose=[];
