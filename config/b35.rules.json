@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "selectors": {
+    "slides": ".slide",
+    "header": ".hdr",
+    "body": ".body",
+    "navigator": ".nav",
+    "reveals": "[data-step]",
+    "answerElements": ".practice-answer, .answer-tag, .ans, [data-role='answer']",
+    "taskCards": ".practice-question, .qcard, .card:has(.tag), .challenge-box:has(.prompt)",
+    "numberChips": ".practice-num, .qnum, .num, .tag",
+    "panels": ".card, .note, .rule, .qcard, .practice-question, .practice-answer, .challenge-box, .step-solution, .visual-card, .formula-panel, .summary-card, .sum-card, svg, math, .frac, .root, .work, .prompt"
+  },
+  "thresholds": {
+    "geometryTolerancePx": 1,
+    "overlapTolerancePx": 2,
+    "svgFormulaOverlapTolerancePx": 2,
+    "svgFormulaMinimumOverlapRatio": 0.1,
+    "svgFormulaAxisTolerancePx": 6,
+    "formulaMaximumFontSizeRatio": 1.2,
+    "formulaMaximumFontWeightDifference": 200,
+    "teachingEquationMinimumFontPx": 18,
+    "formulaMinimumLineGapPx": 2,
+    "formulaClippingTolerancePx": 2,
+    "opticalFractionMinimumInkHeightPx": 7,
+    "opticalFractionMinimumRelativeHeight": 0.6,
+    "opticalFractionMaximumPeerRatio": 1.4,
+    "diagramGeometryTolerancePx": 2,
+    "diagramFractionRatioTolerance": 0.02,
+    "percentageChangeRatioTolerance": 0.005,
+    "compositionMinimumPanelAreaRatio": 0.15,
+    "compositionMinimumContentOccupancy": 0.3,
+    "compositionMaximumBottomWhitespaceRatio": 0.4,
+    "equationMaximumSoftLines": 1,
+    "cardAlignmentTolerancePx": 8,
+    "cardFormulaBottomTolerancePx": 16,
+    "footerFontTolerancePx": 0.5,
+    "footerWeightTolerance": 100,
+    "footerBoxTolerancePx": 1,
+    "footerContentCenterTolerancePx": 2,
+    "diagramLabelMaximumDistancePx": 12,
+    "diagramConnectorTolerancePx": 6,
+    "compositionBalanceMinimumDifference": 0.2,
+    "compositionBalanceMaximumRatio": 1.8,
+    "visualMinimumBlockGapPx": 2,
+    "navigatorClearancePx": 2,
+    "minimumReadableFontPx": 10,
+    "minimumDiagramFontPx": 11,
+    "minimumContrastNormal": 4.5,
+    "minimumContrastLarge": 3,
+    "mostlyEmptyCardMinimumAreaRatio": 0.18,
+    "mostlyEmptyCardMaximumTextCharacters": 28
+  },
+  "formulaConsistency": {
+    "formulaSelectors": ".formula,.work,[data-b35-formula],[data-b35-formula-row]",
+    "peerSelectors": ".steps-col,.practice-answers,[data-b35-formula-set]",
+    "labelSelectors": ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,[data-b35-formula-label]",
+    "automaticContextSelectors": ".mini,.note,.rule,p,li,td,th,figcaption,div",
+    "teachingEquationSelectors": ".formula,.mini,[data-b35-equation],[data-b35-formula-role='teaching']",
+    "teachingEquationMaximumCharacters": 120,
+    "fullEquationMathML": true,
+    "standaloneEquationSelectors": ".formula,.work,.mini,.step-solution,.practice-answer,p,[data-b35-equation],[data-b35-formula-row],[data-b35-standalone-equation]",
+    "standaloneEquationRenderers": ["mathml"],
+    "standaloneEquationMaximumCharacters": 160,
+    "fontFamilyAliases": {}
+  },
+  "diagramModels": [],
+  "lessonReusability": {
+    "enabled": true,
+    "teacherDirectionsEnabled": true,
+    "personalisationEnabled": true,
+    "studentNames": [],
+    "allowedTerms": []
+  },
+  "pagePairs": {
+    "enabled": true,
+    "singlePageExamplesEnabled": true,
+    "questionSelectors": ".prompt,.practice-question,[data-b35-question]",
+    "answerSelectors": ".step-solution,.practice-answer,[data-role='answer'],[data-b35-answer]",
+    "instructionSelectors": ".hint,.rule,.note,[data-b35-instruction]",
+    "decorationSelectors": ".hdr,.book,.tag,.challenge-title,.hi-wm,.wm,.nav,[data-b35-page-decoration]",
+    "boilerplateTexts": [
+      "Keep the original whole, the changed whole and the requested quantity distinct.",
+      "First decide: is this a part-of-whole, a change, a remainder, or a reverse-percentage problem?"
+    ],
+    "exemptSlideIds": []
+  },
+  "visualReview": {
+    "questionPartsEnabled": true,
+    "questionPartSelectors": ".prompt,.practice-question,[data-b35-question],[data-b35-question-parts]",
+    "formulaSelectors": ".formula,.work,[data-b35-formula]",
+    "comparisonGroups": [],
+    "nestedPercentages": [],
+    "inferNestedPercentages": true,
+    "diagramLabels": [],
+    "premiseAnswerChecks": [],
+    "premiseConcepts": [
+      {
+        "id": "blue-eyes",
+        "name": "blue-eyed subgroup",
+        "terms": ["blue eyes", "blue-eyed", "blue eyed"]
+      }
+    ],
+    "spacingSelectors": ".card,.visual-card,.step-solution,[data-b35-spacing-group]"
+  },
+  "complementaryChecks": {
+    "contentQuality": {
+      "enabled": true,
+      "tolerancePx": 2,
+      "panelSelectors": ".card,.challenge-box,.step-solution,.practice-answer,.note,.rule,.warning,.check,[data-b35-content-panel]",
+      "mathSelectors": ".math,.eq,.formula,math,[data-b35-content-role=solution]",
+      "mathFontFamily": "Cambria Math",
+      "proseSelectors": "[data-b35-content-role=explanation],[data-b35-content-role=note]",
+      "proseFontFamily": "Nunito",
+      "revealDependencies": []
+    },
+    "typographyHierarchy": {
+      "enabled": true,
+      "tolerancePx": 0.5,
+      "roles": [
+        {"name":"heading","selector":".hdr,[data-b35-content-role=heading]","sizePx":18},
+        {"name":"question","selector":".prompt,[data-b35-content-role=question]","sizePx":24},
+        {"name":"solution","selector":".eq,.work,.practice-answer,[data-b35-content-role=solution]","sizePx":22},
+        {"name":"explanation","selector":".step-solution,.hint,[data-b35-content-role=explanation]","sizePx":18},
+        {"name":"note","selector":".note,.check,.warning,[data-b35-content-role=note]","sizePx":16},
+        {"name":"diagram-label","selector":"svg text,[data-b35-content-role=diagram-label]","minimumPx":14,"maximumPx":16},
+        {"name":"citation","selector":".book,[data-b35-content-role=citation]","sizePx":11}
+      ]
+    },
+    "footersEnabled": true,
+    "footerGroups": [
+      {
+        "selector": ".three,.four,[data-b35-footer-group]",
+        "cardSelector": ":scope > .card,:scope > .summary-card",
+        "footerSelector": ":scope > .mini,[data-b35-card-footer]",
+        "minimumFontSizePx": 18,
+        "requireAll": true,
+        "alignment": {"horizontal": "center", "vertical": "center"}
+      }
+    ],
+    "symbolRendering": {
+      "enabled": true,
+      "selectors": "msqrt,mroot,mfrac,.root,.frac,[data-b35-math-symbol],svg text",
+      "formulaScopes": ".formula,.work,.mini,.step-solution,.practice-answer,.prompt,[data-b35-equation],[data-b35-formula-row]",
+      "strokeContracts": [],
+      "approvals": []
+    }
+  },
+  "composition": {
+    "panelSelectors": ".visual-card,.formula-panel,.card,.summary-card,[data-b35-composition-panel]",
+    "columnSelectors": ".two,.concept-board,.practice-grid,.paired-practice,[data-b35-composition-columns]"
+  },
+  "capture": {
+    "mode": "review",
+    "quality": 76,
+    "states": ["initial", "middle", "final"]
+  },
+  "policy": {
+    "teacherDirectionSeverity": "warning",
+    "studentPersonalisationSeverity": "warning",
+    "typographyHierarchySeverity": "warning",
+    "contentPanelBoundsSeverity": "warning",
+    "contentPanelOverlapSeverity": "warning",
+    "requiredFontFamilySeverity": "warning",
+    "revealDependencySeverity": "error",
+    "legacyFractionRuntimeSeverity": "error",
+    "legacyFractionSourceSeverity": "warning",
+    "taskCardStyleSeverity": "error",
+    "minimumFontSeverity": "warning",
+    "contrastSeverity": "warning",
+    "svgFormulaCollisionSeverity": "error",
+    "svgFormulaAxisSeverity": "warning",
+    "formulaTypographySeverity": "warning",
+    "formulaNotationSeverity": "warning",
+    "fullEquationMathMLSeverity": "warning",
+    "malformedMathSeverity": "error",
+    "formulaClippingSeverity": "error",
+    "formulaLineCollisionSeverity": "error",
+    "opticalSizeSeverity": "warning",
+    "diagramModelSeverity": "error",
+    "inferredDiagramSeverity": "warning",
+    "compositionSeverity": "warning",
+    "svgAccessibleNameSeverity": "off",
+    "visualReviewSeverity": "warning",
+    "footerTypographySeverity": "warning",
+    "footerAlignmentSeverity": "warning",
+    "symbolRenderingSeverity": "warning",
+    "declaredVisualModelSeverity": "error",
+    "externalRequestFailureSeverity": "warning"
+  }
+}
