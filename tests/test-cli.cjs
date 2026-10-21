@@ -25,6 +25,7 @@ try{
  test('invalid severity rejects',()=>assert.throws(()=>configuration(fixture('severity.json','{"policy":{"formulaTypographySeverity":"anything"}}'),'html'),/severity/));
  test('prototype keys reject',()=>assert.throws(()=>merge({},JSON.parse('{"__proto__":{}}')),/Unsafe/));
  test('lesson defaults retain all three checks',()=>{const c=configuration(null,'lesson');assert.equal(c.complementaryChecks.footersEnabled,true);assert.equal(c.complementaryChecks.symbolRendering.enabled,true);assert.equal(c.formulaConsistency.fullEquationMathML,true);});
+ test('sentence typography is lesson-only by default',()=>{assert.equal(configuration(null,'lesson').complementaryChecks.proseTypography.enabled,true);assert.equal(configuration(null,'html').complementaryChecks.proseTypography.enabled,false);});
  test('module/importmap/JSON scripts are not parsed as classic scripts',()=>assert.equal(sourceChecks(doc('<script type="module">export const x=1;</script><script type="application/ld+json">{"x":1}</script>')).length,0));
  test('broken classic JS is caught',()=>assert.ok(sourceChecks(doc('<script>const = ;</script>')).some(f=>f.rule==='HTML-SOURCE-002')));
  test('installed-style command help works without browser',()=>assert.equal(command(['--help']).status,0));

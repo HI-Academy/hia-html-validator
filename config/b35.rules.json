@@ -108,6 +108,12 @@
     "spacingSelectors": ".card,.visual-card,.step-solution,[data-b35-spacing-group]"
   },
   "complementaryChecks": {
+    "proseTypography": {
+      "enabled": true,
+      "selectors": ".prompt,.practice-question,.step-solution,.practice-answer,.hint,.note,[data-b35-content-role=question],[data-b35-content-role=explanation],[data-b35-content-role=solution]",
+      "fontFamily": "Nunito",
+      "minimumWeightDifference": 200
+    },
     "contentQuality": {
       "enabled": true,
       "tolerancePx": 2,
@@ -166,6 +172,7 @@
     "contentPanelBoundsSeverity": "warning",
     "contentPanelOverlapSeverity": "warning",
     "requiredFontFamilySeverity": "warning",
+    "inlineMathContrastSeverity": "warning",
     "revealDependencySeverity": "error",
     "legacyFractionRuntimeSeverity": "error",
     "legacyFractionSourceSeverity": "warning",

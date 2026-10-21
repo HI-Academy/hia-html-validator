@@ -9,6 +9,7 @@ const cards=(contents=['x = 1','y = 2','z = 3','a = 4'])=>'<div class="four">'+c
 const clone=()=>structuredClone(config);
 // Earlier suites isolate their own contracts; quality fixtures opt in below.
 config.complementaryChecks.contentQuality.enabled=false;
+config.complementaryChecks.proseTypography.enabled=false;
 (async()=>{const browser=await chromium.launch(),results=[];try{
   const page=await browser.newPage({viewport:{width:1920,height:1080}});
   async function check(name,html,verify,options=config){await page.setContent(html);await page.evaluate(()=>document.fonts.ready);const findings=await page.evaluate(auditComplementaryChecks,options);verify(findings);results.push({name,passed:true,findings});return findings;}
@@ -112,6 +113,28 @@ config.complementaryChecks.contentQuality.enabled=false;
   await check('unfinished working sequence blocks explanation',wrap('<div id="working">Question<span data-step="1" style="visibility:hidden">Result</span></div><p class="explanation">Explain</p>'),xs=>assert.ok(has(xs,'B35-REVEAL-002')),complete);
   const custom=structuredClone(quality);custom.complementaryChecks.contentQuality.mathFontFamily='Arial';
   await check('required maths family is configurable',wrap('<div class="eq" style="font:22px Arial">x = 3</div>'),xs=>assert.equal(has(xs,'B35-TYPE-002'),false),custom);
+  const proseRole=clone();proseRole.complementaryChecks.proseTypography.enabled=true;
+  proseRole.complementaryChecks.proseTypography.fontFamily='Arial';
+  const inline='<math style="font-weight:400"><mfrac><mn>16</mn><mn>20</mn></mfrac></math>';
+  for(const [name,html,rule,expected] of [
+    ['question math-font leakage','<p class="prompt" style="font-family:Cambria Math">Compare these fractions.</p>','B35-TYPE-002',true],
+    ['solution prose without fractions','<p class="step-solution" style="font-family:Cambria Math">Check: more than half of the whole.</p>','B35-TYPE-002',true],
+    ['separate prose and math families','<p class="prompt">Compare <math style="font-family:Cambria Math"><mn>16</mn></math> with the whole.</p>','B35-TYPE-002',false],
+    ['bold prose regular fraction','<p class="prompt" style="font-weight:900">Compare '+inline+' with the whole.</p>','B35-TYPE-003',true],
+    ['wrapper cannot hide contrast','<p class="prompt" style="font-weight:900">Compare <span data-b35-formula>'+inline+'</span> with the whole.</p>','B35-TYPE-003',true],
+    ['regular emphasis agrees','<p class="prompt">Compare '+inline+' with the whole.</p>','B35-TYPE-003',false],
+    ['bold emphasis agrees','<p class="prompt" style="font-weight:900">Compare '+inline.replace('font-weight:400','font-weight:900')+' with the whole.</p>','B35-TYPE-003',false],
+    ['equation not sentence prose','<p class="step-solution" style="font-family:Cambria Math">x = '+inline+'</p>','B35-TYPE-002',false],
+    ['hidden sentence waits','<p class="prompt" style="visibility:hidden;font-family:Georgia;font-weight:900">Compare '+inline+'</p>','B35-TYPE-003',false],
+    ['hidden mathematics waits','<p class="prompt" style="font-weight:900">Compare <span style="visibility:hidden">'+inline+'</span> with the whole.</p>','B35-TYPE-003',false],
+    ['exponent emphasis is structural','<p class="prompt" style="font-weight:900">Compare <math style="font-weight:900"><msup><mn>2</mn><mn style="font-weight:400">3</mn></msup></math> with the whole.</p>','B35-TYPE-003',false],
+    ['label not sentence prose','<p class="prompt" style="font-weight:900"><span class="tag" style="font-weight:400">QUESTION</span><math><mn>2</mn></math></p>','B35-TYPE-003',false],
+    ['documented font comparison','<p class="prompt" data-b35-allow-prose-typography="intentional font comparison" style="font-weight:900">Compare '+inline+'</p>','B35-TYPE-003',false]
+  ])await check(name,wrap(html),xs=>assert.equal(has(xs,rule),expected,name+': '+JSON.stringify(xs)),proseRole);
+  const disabledRole=structuredClone(proseRole);disabledRole.complementaryChecks.proseTypography.enabled=false;
+  await check('sentence contract configurable',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.equal(has(xs,'B35-TYPE-003'),false),disabledRole);
+  const foundContrast=await check('contrast actionable evidence',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.ok(has(xs,'B35-TYPE-003')),proseRole);
+  const contrast=foundContrast.find(x=>x.rule==='B35-TYPE-003');assert.equal(contrast.evidence.visualHarmonyVerified,false);assert.ok(contrast.evidence.measurements.length);for(const key of ['expected','impact','suggestedAction','confidence','verification','constraints'])assert.ok(contrast[key]);
   const lessonIndex=process.argv.indexOf('--chapter8');
   if(lessonIndex>=0){
     await page.setViewportSize({width:960,height:540});await page.goto(pathToFileURL(path.resolve(process.argv[lessonIndex+1])).href);await page.evaluate(()=>document.fonts.ready);

@@ -18,6 +18,7 @@ function configuration(file,profile,viewport){
     config.formulaConsistency.fullEquationMathML=false;
     config.complementaryChecks.typographyHierarchy.enabled=false;
     config.complementaryChecks.contentQuality.enabled=false;
+    config.complementaryChecks.proseTypography.enabled=false;
   config.formulaConsistency.teachingEquationSelectors='[data-b35-equation],[data-b35-formula-role="teaching"]';
   config.complementaryChecks.footerGroups=[{selector:'[data-b35-footer-group]',cardSelector:':scope > .card,:scope > .summary-card',footerSelector:'[data-b35-card-footer],:scope > .mini',requireAll:true}];
   config.complementaryChecks.symbolRendering.formulaScopes='.formula,.work,[data-b35-equation],[data-b35-formula-row],p,figure';

@@ -87,6 +87,45 @@ function auditComplementaryChecks(config) {
       issues.push({rule,severity,message,slide:slide.id,runtimeSlide:slides.indexOf(slide)+1,
         header:(slide.querySelector(config.selectors.header)?.textContent||'').trim(),selector:pathFor(node),evidence,...guidance});
     };
+    const proseTypography=settings.proseTypography;
+    if(proseTypography?.enabled){
+      const excluded='script,style,svg,.hi-wm,.nav,.book,.tag,.answer-tag,.practice-num,sup,sub,.power';
+      const maths='math,.katex,mjx-container,.frac,.root,[data-b35-formula],[data-b35-equation],.formula,.eq';
+      const mathWords=new Set(['sin','cos','tan','log','sqrt','exp','lim','mod','max','min','cm','mm','km','kg','sec','rad']);
+      const isProse=text=>(text.match(/[A-Za-z]{3,}/g)||[]).some(word=>!mathWords.has(word.toLowerCase()));
+      const guidance={expected:'Question and solution sentences use the configured prose font; adjacent base mathematical tokens have a compatible visual emphasis.',
+        impact:'Whole sentences in a math font, or bold prose with noticeably lighter inline mathematics, create an inconsistent reading hierarchy.',
+        suggestedAction:'Keep explanatory text in the shared prose style. Style each complete mathematical expression separately with a compatible emphasis; do not force the entire paragraph into a math font or blindly resize fraction parts.',
+        confidence:'English prose heuristic and computed primary font/weight comparison; this does not measure actual glyph strokes or certify optical harmony.',
+        verification:['Review the complete sentence and expression at lesson size and enlarged resolution after fonts load.','Recheck every affected reveal, wrapping, fraction geometry and panel bounds.'],
+        constraints:['Preserve operands, units and teaching sequence.','Matching CSS weights or a symbol-review approval cannot certify or waive this role check.']};
+      const handledProse=new Set();
+      for(const owner of select(slide,proseTypography.selectors)){
+        if(!visible(owner)||owner.closest('[data-b35-allow-prose-typography]'))continue;
+        const prose=[];
+        for(const node of [owner,...owner.querySelectorAll('*')]){
+          if(!visible(node)||node.closest(excluded)||node.closest(maths)||node.closest('[data-b35-allow-prose-typography]'))continue;
+          const text=[...node.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join(' ').trim();
+          if(!isProse(text))continue;
+          const style=getComputedStyle(node),actual=style.fontFamily.split(',')[0].replace(/["']/g,'').trim();
+          prose.push({node,text,weight:Number(style.fontWeight)||400});
+          if(!handledProse.has(node)&&proseTypography.fontFamily&&actual.toLowerCase()!==proseTypography.fontFamily.toLowerCase()){
+            emit('B35-TYPE-002',policy.requiredFontFamilySeverity||'warning','Sentence prose uses '+actual+'; expected '+proseTypography.fontFamily+'.',node,
+              {kind:'sentence-prose-font-family',text:text.slice(0,160),actualFamily:actual,expectedFamily:proseTypography.fontFamily,source:'computed primary declared family; actual font fallback not verified'},guidance);
+          }
+          handledProse.add(node);
+        }
+        if(!prose.length)continue;
+        const baseTokens=select(owner,'math mn,math mi,math mo,math mtext,.frac,.root,.katex,mjx-container').filter(n=>visible(n)&&!n.closest(excluded)&&!n.closest('[data-b35-allow-prose-typography]')&&!n.closest('msup > :not(:first-child),msub > :not(:first-child),msubsup > :not(:first-child),mroot > :not(:first-child)'));
+        const contrasts=baseTokens.flatMap(node=>{
+          const weight=Number(getComputedStyle(node).fontWeight)||400;
+          return prose.filter(p=>Math.min(p.weight,weight)<=500&&Math.max(p.weight,weight)>=600&&Math.abs(p.weight-weight)>=(proseTypography.minimumWeightDifference??200))
+            .map(p=>({proseSelector:pathFor(p.node),proseText:p.text.slice(0,100),proseWeight:p.weight,mathSelector:pathFor(node),mathText:node.textContent.slice(0,60),mathWeight:weight}));
+        });
+        if(contrasts.length)emit('B35-TYPE-003',policy.inlineMathContrastSeverity||'warning','Sentence prose and embedded mathematics mix regular and bold emphasis; review the complete sentence.',owner,
+          {kind:'prose-inline-math-weight-contrast',measurements:contrasts,visualHarmonyVerified:false},guidance);
+      }
+    }
     const quality=settings.contentQuality;
     if(quality?.enabled){
       const tolerance=(quality.tolerancePx??2)*scale;

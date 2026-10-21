@@ -13,6 +13,7 @@ HI Academy lessons; general HTML disables `contentQuality` by default.
 | Large answer panel uses only a small top region | Existing B35-COMPOSITION-001: low occupancy / excessive bottom whitespace |
 | Wrong role-specific font, including numerator/denominator variables | B35-TYPE-002 |
 | Inconsistent role sizes across pages | B35-TYPE-001 |
+| Sentence prose versus inline mathematics has a regular/bold emphasis mismatch | B35-TYPE-003 |
 | Explanation visible before required working is ready | B35-REVEAL-002 |
 | Fragile radical construction / declared SVG bounds | B35-MATH-020, with B35-MATH-019 optical review |
 
@@ -44,6 +45,38 @@ Severities: `contentPanelBoundsSeverity`, `contentPanelOverlapSeverity`, and
 `requiredFontFamilySeverity` default to warning; `revealDependencySeverity`
 defaults to error. These contracts run at each visited state; composition
 occupancy is intentionally final-state only, so hidden answers are not penalised.
+
+## Sentence and inline mathematics typography — B35-TYPE-002 / B35-TYPE-003
+
+Lesson defaults enable `complementaryChecks.proseTypography` across question,
+practice, solution, hint and note roles. General HTML defaults leave it disabled;
+it can be explicitly enabled. `selectors`, prose `fontFamily` (Nunito by default)
+and `minimumWeightDifference` (200) are configurable.
+
+`B35-TYPE-002` additionally reports sentence-like English text in these roles
+that declares the wrong primary font (`sentence-prose-font-family`). Ordinary
+solution sentences must not inherit a math font just because the paragraph or
+another sentence contains a fraction. Mathematical renderers, explicit equations,
+labels and structural scripts are excluded from prose-family comparison. An
+English word heuristic distinguishes prose from short equations; unfamiliar
+notation, non-English prose and prose incorrectly authored inside a math renderer
+still need review.
+
+`B35-TYPE-003` reports a review-required regular/bold contrast between prose and
+embedded base mathematics in the same role. It compares numeric CSS weights
+(regular <=500 versus bold >=600 with the configured minimum difference), not
+actual glyph strokes. Different prose/math families are permitted; identical CSS
+weights do not certify optical harmony. Exponent/subscript/index tokens, labels
+and hidden reveals are excluded. An inline `data-b35-formula` wrapper does not
+remove the surrounding sentence comparison. Symbol approvals for B35-MATH-019
+cannot waive this rule. `policy.inlineMathContrastSeverity` defaults to warning.
+
+Findings provide selectors, text samples, font/weight evidence, repair guidance,
+verification and limitations. Keep complete mathematical expressions coherent;
+do not make all prose mathematical, shrink structural fractions, or blindly force
+math glyphs bold. Inspect normal-size and enlarged output after repairs. A
+documented intentional font comparison may use
+`data-b35-allow-prose-typography`; this is not an automatic visual approval.
 
 ## Content font-size hierarchy — B35-TYPE-001
 
