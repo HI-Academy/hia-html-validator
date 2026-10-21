@@ -92,7 +92,7 @@ config.complementaryChecks.proseTypography.enabled=false;
   await check('intentional type size exception respected',wrap('<div class="eq" data-b35-allow-type-size="cover example" style="font-size:34px">x = 1</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
   const hierarchyOff=clone();hierarchyOff.complementaryChecks.typographyHierarchy.enabled=false;
   await check('hierarchy can be disabled',wrap('<div class="eq" style="font-size:34px">x = 1</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false),hierarchyOff);
-  const quality=clone();quality.complementaryChecks.contentQuality.enabled=true;
+  const quality=clone();quality.complementaryChecks.contentQuality.enabled=true;quality.complementaryChecks.contentQuality.mathFontFamily='Cambria Math';
   for(const scale of [1,.5,2]){
     const wrapped=wrap('<div class="card" style="width:120px;height:110px;padding:5px"><span style="font:24px Arial">equal-point ties</span></div>',`.slide{transform:scale(${scale})}`);
     await check('wrapped hyphenated word uses fragment bounds at scale '+scale,wrapped,xs=>assert.equal(xs.some(x=>['B35-LAYOUT-004','B35-LAYOUT-005'].includes(x.rule)),false),quality);
@@ -115,6 +115,7 @@ config.complementaryChecks.proseTypography.enabled=false;
   await check('required maths family is configurable',wrap('<div class="eq" style="font:22px Arial">x = 3</div>'),xs=>assert.equal(has(xs,'B35-TYPE-002'),false),custom);
   const proseRole=clone();proseRole.complementaryChecks.proseTypography.enabled=true;
   proseRole.complementaryChecks.proseTypography.fontFamily='Arial';
+  proseRole.complementaryChecks.proseTypography.roleContracts=[];
   const inline='<math style="font-weight:400"><mfrac><mn>16</mn><mn>20</mn></mfrac></math>';
   for(const [name,html,rule,expected] of [
     ['question math-font leakage','<p class="prompt" style="font-family:Cambria Math">Compare these fractions.</p>','B35-TYPE-002',true],
@@ -136,15 +137,15 @@ config.complementaryChecks.proseTypography.enabled=false;
   const foundContrast=await check('contrast actionable evidence',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.ok(has(xs,'B35-TYPE-003')),proseRole);
   const contrast=foundContrast.find(x=>x.rule==='B35-TYPE-003');assert.equal(contrast.evidence.visualHarmonyVerified,false);assert.ok(contrast.evidence.measurements.length);for(const key of ['expected','impact','suggestedAction','confidence','verification','constraints'])assert.ok(contrast[key]);
   const roleStyle=clone();roleStyle.complementaryChecks.proseTypography.enabled=true;
-  const approvedQuestion='<p class="prompt" style="font-family:Nunito;font-weight:900">Compare <span data-b35-formula style="font-family:Cambria Math;font-weight:700"><math style="font-family:Cambria Math;font-weight:700"><mfrac><mn>16</mn><mn>20</mn></mfrac></math></span> with the whole.</p>';
+  const approvedQuestion='<p class="prompt" style="font-family:Georgia;font-weight:900">Compare <span data-b35-formula style="font-family:Georgia;font-weight:900"><math style="font-family:Georgia;font-weight:900"><mfrac><mn>16</mn><mn>20</mn></mfrac></math></span> with the whole.</p>';
   for(const [name,html,expected] of [
     ['approved question roles pass',approvedQuestion,false],
     ['question weight must be exactly 900',approvedQuestion.replace('font-weight:900','font-weight:800'),true],
-    ['question prose family is explicit',approvedQuestion.replace('font-family:Nunito','font-family:Arial'),true],
-    ['question math weight must be exactly 700',approvedQuestion.replaceAll('font-weight:700','font-weight:600'),true],
-    ['question math family is explicit',approvedQuestion.replaceAll('font-family:Cambria Math','font-family:Georgia'),true],
-    ['solution explanation 800 passes','<p class="step-solution" style="font-family:Nunito;font-weight:800">Check the result.</p>',false],
-    ['solution explanation 700 warns','<p class="step-solution" style="font-family:Nunito;font-weight:700">Check the result.</p>',true],
+    ['question prose family is explicit',approvedQuestion.replace('font-family:Georgia','font-family:Arial'),true],
+    ['question math shares the question prose weight',approvedQuestion.replace('data-b35-formula style="font-family:Georgia;font-weight:900"','data-b35-formula style="font-family:Georgia;font-weight:700"').replace('<math style="font-family:Georgia;font-weight:900">','<math style="font-family:Georgia;font-weight:700">'),true],
+    ['question math family is explicit',approvedQuestion.replaceAll('font-family:Georgia','font-family:Cambria Math'),true],
+    ['solution explanation 900 passes','<p class="step-solution" style="font-family:Georgia;font-weight:900">Check the result.</p>',false],
+    ['solution explanation 800 warns','<p class="step-solution" style="font-family:Georgia;font-weight:800">Check the result.</p>',true],
     ['solution math-only rows are not prose','<p class="step-solution" style="font-family:Cambria Math;font-weight:400"><math><mn>25</mn></math></p>',false],
     ['hidden role waits for reveal',approvedQuestion.replace('class="prompt"','class="prompt" hidden').replace('font-weight:900','font-weight:800'),false],
     ['structural exponent may differ',approvedQuestion.replace('<mfrac><mn>16</mn><mn>20</mn></mfrac>','<msup><mn>2</mn><mn style="font-weight:400">3</mn></msup>'),false],

@@ -111,12 +111,12 @@
     "proseTypography": {
       "enabled": true,
       "selectors": ".prompt,.practice-question,.step-solution,.practice-answer,.hint,.note,[data-b35-content-role=question],[data-b35-content-role=explanation],[data-b35-content-role=solution]",
-      "fontFamily": "Nunito",
+      "fontFamily": "Georgia",
       "minimumWeightDifference": 200,
       "roleContracts": [
-        {"name":"question-prose","selector":".prompt,.practice-question,[data-b35-content-role=question]","kind":"prose","fontFamily":"Nunito","fontWeight":900},
-        {"name":"question-math","selector":".prompt,.practice-question,[data-b35-content-role=question]","kind":"math","fontFamily":"Cambria Math","fontWeight":700},
-        {"name":"solution-explanation","selector":".step-solution,.practice-answer,[data-b35-content-role=explanation],[data-b35-content-role=solution]","kind":"prose","fontFamily":"Nunito","fontWeight":800}
+        {"name":"question-prose","selector":".prompt,.practice-question,[data-b35-content-role=question]","kind":"prose","fontFamily":"Georgia","fontWeight":900},
+        {"name":"question-math","selector":".prompt,.practice-question,[data-b35-content-role=question]","kind":"math","fontFamily":"Georgia","fontWeight":900},
+        {"name":"solution-explanation","selector":".step-solution,.practice-answer,[data-b35-content-role=explanation],[data-b35-content-role=solution]","kind":"prose","fontFamily":"Georgia","fontWeight":900}
       ]
     },
     "contentQuality": {
@@ -124,9 +124,9 @@
       "tolerancePx": 2,
       "panelSelectors": ".card,.challenge-box,.step-solution,.practice-answer,.note,.rule,.warning,.check,[data-b35-content-panel]",
       "mathSelectors": ".math,.eq,.formula,math,[data-b35-content-role=solution]",
-      "mathFontFamily": "Cambria Math",
+      "mathFontFamily": "Georgia",
       "proseSelectors": "[data-b35-content-role=explanation],[data-b35-content-role=note]",
-      "proseFontFamily": "Nunito",
+      "proseFontFamily": "Georgia",
       "revealDependencies": []
     },
     "typographyHierarchy": {

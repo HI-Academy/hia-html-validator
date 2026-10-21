@@ -20,12 +20,14 @@ HI Academy lessons; general HTML disables `contentQuality` by default.
 
 Configure `complementaryChecks.contentQuality` with `enabled`, `tolerancePx`,
 `panelSelectors`, `mathSelectors`, `mathFontFamily`, `proseSelectors`,
-`proseFontFamily`, and `revealDependencies`. Math defaults to Cambria Math;
-explicit prose roles default to Nunito. Both are configurable, not hard-coded
-universal font requirements. `B35-TYPE-002` checks computed primary declarations
-on visible text, including MathML fraction tokens. Actual glyph fallback is not
-verified. Decorative labels, script-size tokens and generated radical SVG text
-are excluded. Use `data-b35-allow-font-family` for a documented variation.
+`proseFontFamily`, and `revealDependencies`. Lesson typography defaults to Georgia
+for question/explanation prose and mathematical notation, so inline expressions do
+not switch typeface mid-sentence. Both settings remain configurable; this is the
+HI Academy lesson default, not a universal font requirement. `B35-TYPE-002` checks
+computed primary declarations on visible text, including MathML fraction tokens.
+Actual glyph fallback is not verified. Decorative labels, script-size tokens and
+generated radical SVG text are excluded. Use `data-b35-allow-font-family` for a
+documented variation.
 
 Panel checks use rendered content bounds (text ranges, canvas metrics, MathML
 and graphic boxes), with tolerance in slide design pixels. Ancestor/descendant
@@ -83,11 +85,13 @@ documented intentional font comparison may use
 
 The reusable lesson defaults in `complementaryChecks.proseTypography.roleContracts`
 require question prose (`.prompt`, `.practice-question` or an explicit question
-role) to use **Nunito 900**, mathematical base tokens inside those questions to
-use **Cambria Math 700**, and solution explanation prose (`.step-solution`,
-`.practice-answer` or explicit explanation/solution roles) to use **Nunito 800**.
-These are HI Academy design defaults, not universal font requirements or
-page-specific exceptions. Each contract's selector, family and weight are editable.
+role) and mathematical base tokens inside those questions to use **Georgia**;
+solution explanation prose (`.step-solution`, `.practice-answer` or explicit
+explanation/solution roles) also uses **Georgia**. These authored question and
+explanation roles use weight **900** for a consistent text voice; labels remain
+separate interface roles. The shared family is an HI Academy design default,
+not a universal font requirement or page-specific exception. Each contract's
+selector, family and weight are editable.
 The existing proseTypography switch is lesson-only by default.
 
 `B35-TYPE-004` checks computed primary family and exact numeric CSS weight on
