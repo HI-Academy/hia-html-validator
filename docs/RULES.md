@@ -14,6 +14,7 @@ HI Academy lessons; general HTML disables `contentQuality` by default.
 | Wrong role-specific font, including numerator/denominator variables | B35-TYPE-002 |
 | Inconsistent role sizes across pages | B35-TYPE-001 |
 | Sentence prose versus inline mathematics has a regular/bold emphasis mismatch | B35-TYPE-003 |
+| Approved question and explanation font-family/weight roles | B35-TYPE-004 |
 | Explanation visible before required working is ready | B35-REVEAL-002 |
 | Fragile radical construction / declared SVG bounds | B35-MATH-020, with B35-MATH-019 optical review |
 
@@ -77,6 +78,34 @@ do not make all prose mathematical, shrink structural fractions, or blindly forc
 math glyphs bold. Inspect normal-size and enlarged output after repairs. A
 documented intentional font comparison may use
 `data-b35-allow-prose-typography`; this is not an automatic visual approval.
+
+## Approved lesson font roles — B35-TYPE-004
+
+The reusable lesson defaults in `complementaryChecks.proseTypography.roleContracts`
+require question prose (`.prompt`, `.practice-question` or an explicit question
+role) to use **Nunito 900**, mathematical base tokens inside those questions to
+use **Cambria Math 700**, and solution explanation prose (`.step-solution`,
+`.practice-answer` or explicit explanation/solution roles) to use **Nunito 800**.
+These are HI Academy design defaults, not universal font requirements or
+page-specific exceptions. Each contract's selector, family and weight are editable.
+The existing proseTypography switch is lesson-only by default.
+
+`B35-TYPE-004` checks computed primary family and exact numeric CSS weight on
+visible text. It checks inline math even in `data-b35-formula` wrappers and in
+math-only questions. It excludes labels and structural exponent/subscript/index
+tokens, preserves fraction sizing, and resolves nested roles to their nearest
+owner. Pure equation rows in solution panels are not explanation prose. English
+prose recognition has the same limits as B35-TYPE-002. Renderer-specific or
+unmarked mathematics may need explicit annotation and manual review.
+
+Findings include the expected role, family and weight, actual token measurements,
+location and repair/verification guidance. `policy.roleTypographySeverity` defaults
+to warning. A documented `data-b35-allow-prose-typography` comparison is respected;
+symbol-stroke approvals do not waive this separate contract. Passing computed
+styles does not prove the intended font loaded, actual bold glyphs exist, or
+that glyph strokes are optically harmonious. Review actual rendering at lesson
+size and enlarged resolution; never change operands, shrink fractions or convert
+all explanatory prose into mathematics to obtain a pass.
 
 ## Content font-size hierarchy — B35-TYPE-001
 
