@@ -11,7 +11,7 @@
     "navigator": ".nav",
     "reveals": "[data-step]",
     "answerElements": ".practice-answer, .answer-tag, .ans, [data-role='answer']",
-    "taskCards": ".practice-question, .qcard, .card:has(.tag), .challenge-box:has(.prompt)",
+    "taskCards": ".practice-question, .student-question, .qcard:has(.qtitle), .card:has(.tag), .challenge-box:has(.prompt)",
     "numberChips": ".practice-num, .qnum, .num, .tag",
     "panels": ".card, .note, .rule, .qcard, .practice-question, .practice-answer, .challenge-box, .step-solution, .visual-card, .formula-panel, .summary-card, .sum-card, svg, math, .frac, .root, .work, .prompt"
   },

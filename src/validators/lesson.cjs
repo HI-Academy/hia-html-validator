@@ -387,9 +387,10 @@ function runtimeAuditFunction(config) {
     }
   }
 
-  const taskCandidates = [...slide.querySelectorAll(config.selectors.taskCards)].filter((element) => {
-    const label = (element.querySelector(".tag,.book,.challenge-title")?.textContent || "").trim();
-    return element.matches(".practice-question,.qcard") || /QUESTION\s*\d+|TRY IT|PRACTICE|CHALLENGE/i.test(label);
+  const taskCandidates = [...slide.querySelectorAll(config.selectors.taskCards)].filter(visible).filter((element) => {
+    const label = (element.querySelector(".tag,.book,.challenge-title,.qtitle,.task-label")?.textContent || "").trim();
+    const explicitlyMarked = element.matches(".practice-question,.student-question,[data-b35-task],.challenge-box:has(.prompt)");
+    return explicitlyMarked || /^(?:QUESTION\s*\d+|TRY FIRST|TRY IT|PRACTICE|CHALLENGE)\b/i.test(label);
   });
   for (const task of taskCandidates) {
     const style = getComputedStyle(task);
@@ -397,8 +398,13 @@ function runtimeAuditFunction(config) {
     const darkSolid = background && luminance(background) < 0.20;
     const darkGradient = style.backgroundImage !== "none" && /gradient/i.test(style.backgroundImage) && luminance(parseColor(style.color) || [255, 255, 255]) > 0.6;
     if (!darkSolid && !darkGradient) push("B35-TASK-001", config.policy.taskCardStyleSeverity, "Student-attempt task is not presented on a deep-navy/dark task card.", task, { backgroundColor: style.backgroundColor, backgroundImage: style.backgroundImage, color: style.color });
-    const chip = task.querySelector(config.selectors.numberChips);
-    if (!chip || !/\d+/.test(chip.textContent || "")) push("B35-TASK-001", config.policy.taskCardStyleSeverity, "Student-attempt task has no distinct numbered chip.", task);
+    const label = (task.querySelector(".tag,.book,.challenge-title,.qtitle,.task-label")?.textContent || "").trim();
+    const numberedTask = task.matches(".practice-question,.card:has(.tag),.challenge-box:has(.prompt),[data-b35-numbered-task]")
+      || /^(?:QUESTION\s*\d+|Q\s*\d+|\d+[.)])/i.test(label);
+    if (numberedTask) {
+      const chip = task.querySelector(config.selectors.numberChips);
+      if (!chip || !/\d+/.test(chip.textContent || "")) push("B35-TASK-001", config.policy.taskCardStyleSeverity, "Numbered student task has no distinct numeric chip.", task);
+    }
   }
 
   const legacyFractions = [...slide.querySelectorAll(".frac")].filter(visible);

@@ -235,7 +235,7 @@ The process exits with:
 | `B35-CANVAS-004` | Unexpected sibling-panel collisions | Automated |
 | `B35-CANVAS-005` | Mostly-empty large cards and isolated short lines | Heuristic warning |
 | `B35-ORDER-001` | No answer element is visible at the initial reveal | Automated |
-| `B35-TASK-001` | Student-attempt cards are dark, visually distinct and have a number chip | Automated |
+| `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
 | `B35-MATH-001` | No legacy `.frac` remains after runtime transformation | Automated |
 | `B35-MATH-002` | Formula/fraction/root boxes have non-zero readable geometry | Automated |
