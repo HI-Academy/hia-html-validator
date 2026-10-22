@@ -4,7 +4,7 @@ const {pathToFileURL}=require('node:url');const {chromium}=require('playwright')
 const {auditComplementaryChecks}=require('../src/rules/complementary-rules.cjs');const config=require('../config/b35.rules.json');
 const root='<math><msqrt><mn>25</mn></msqrt><mo>=</mo><mn>5</mn></math>';
 const fraction='<math><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>=</mo><mn>0.5</mn></math>';
-const wrap=(content,css='')=>`<!doctype html><html><head><style>*{box-sizing:border-box}body{margin:0;font:18px Arial}.slide{width:960px;height:540px;transform-origin:top left}.four{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{height:230px;padding:10px;display:flex;flex-direction:column;justify-content:space-between}.mini{height:64px;flex:none;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;font:700 18px/24px Arial}.content{display:block}math{font-size:inherit} ${css}</style></head><body><section id="fixture" class="slide active"><div class="hdr">Complementary check fixture</div>${content}</section></body></html>`;
+const wrap=(content,css='')=>`<!doctype html><html><head><style>*{box-sizing:border-box}body{margin:0;font:18px Arial}.slide{width:960px;height:540px;transform-origin:top left}.four{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{height:230px;padding:10px;display:flex;flex-direction:column;justify-content:space-between}.mini{height:64px;flex:none;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;font:700 18px/24px Arial}.content{display:block}.formula{font-size:26px}math{font-size:inherit} ${css}</style></head><body><section id="fixture" class="slide active"><div class="hdr">Complementary check fixture</div>${content}</section></body></html>`;
 const cards=(contents=['x = 1','y = 2','z = 3','a = 4'])=>'<div class="four">'+contents.map((text,i)=>`<div class="card"><h3>Card ${i+1}</h3><div class="mini"><span class="content">${text}</span></div></div>`).join('')+'</div>';
 const clone=()=>structuredClone(config);
 // Earlier suites isolate their own contracts; quality fixtures opt in below.
@@ -81,12 +81,19 @@ config.complementaryChecks.proseTypography.enabled=false;
   await check('coherent SVG radical geometry does not trigger construction warning',wrap(radicalSvg),xs=>assert.equal(has(xs,'B35-MATH-020'),false));
   await check('radicand beyond bar is detected',wrap(radicalSvg.replace('x="22"','x="110"')),xs=>assert.ok(has(xs,'B35-MATH-020')));
   await check('documented radical construction exception is respected',wrap('<span class="root" data-b35-allow-radical-variation="notation comparison"><span class="root-mark">√</span><span class="radicand">x</span></span>'),xs=>assert.equal(has(xs,'B35-MATH-020'),false));
-  await check('role sizes match the agreed lesson hierarchy',wrap('<div class="prompt" style="font-size:24px">x = 1</div><div class="eq" style="font-size:22px">x = 1</div><div class="note" style="font-size:16px">Check</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
+  await check('role sizes match the CH08 lesson hierarchy',wrap('<div class="prompt" style="font-size:18px">x = 1</div><div class="eq" style="font-size:18px">x = 1</div><div class="note" style="font-size:16px">Check</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
+  await check('CH08 worked steps, practice answers and display formula sizes pass',wrap('<div class="step-solution" style="font-size:18px">Explain the result.</div><div class="practice-answer" style="font-size:14px">Answer</div><p class="formula" style="font-size:26px">x = 1</p>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
+  await check('CH08 display formula size is enforced',wrap('<p class="formula" style="font-size:18px">x = 1</p>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-TYPE-001'&&x.evidence.kind==='content-role-font-size'&&x.evidence.role==='display-formula')));
+  await check('oversized lettered subquestions are compared with their stem',wrap('<p class="prompt" style="font-size:16px">Find:<span style="display:block;font-size:24px">(a) the area</span><span style="display:block;font-size:24px">(b) the perimeter</span></p>'),xs=>{const f=xs.find(x=>x.rule==='B35-TYPE-001'&&x.evidence.kind==='question-part-relative-font-size');assert.ok(f);assert.equal(f.evidence.measurements.length,2);assert.equal(f.evidence.measurements[0].ratio,1.5)});
+  await check('lettered subquestions matching the stem pass',wrap('<p class="prompt" style="font-size:16px">Find:<span style="display:block;font-size:16px">(a) the area</span><span style="display:block;font-size:16px">(b) the perimeter</span></p>'),xs=>assert.equal(xs.some(x=>x.rule==='B35-TYPE-001'&&x.evidence.kind==='question-part-relative-font-size'),false));
+  await check('documented lettered-part size variation is respected',wrap('<p class="prompt" data-b35-allow-type-size="intentional inline comparison" style="font-size:16px">Find:<span style="display:block;font-size:24px">(a) the area</span></p>'),xs=>assert.equal(xs.some(x=>x.rule==='B35-TYPE-001'&&x.evidence.kind==='question-part-relative-font-size'),false));
+  await check('inline maths matches its surrounding text size',wrap('<p class="prompt" style="font-size:18px">Write <math style="font-size:18px"><mfrac><mn>4</mn><mn>5</mn></mfrac></math>%.</p>'),xs=>assert.equal(xs.some(x=>x.rule==='B35-TYPE-001'&&x.evidence.kind==='inline-math-font-size-ratio'),false));
+  await check('oversized inline maths is detected',wrap('<p class="prompt" style="font-size:18px">Write <math style="font-size:24px"><mfrac><mn>4</mn><mn>5</mn></mfrac></math>%.</p>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-TYPE-001'&&x.evidence.kind==='inline-math-font-size-ratio')));
   await check('oversized solution is detected',wrap('<div class="eq" style="font-size:34px">x = 1</div>'),xs=>assert.ok(has(xs,'B35-TYPE-001')));
-  await check('undersized solution is detected',wrap('<div class="eq" style="font-size:13px">x = 1</div>'),xs=>assert.ok(has(xs,'B35-TYPE-001')));
-  await check('scaled slide retains design font sizes',wrap('<div class="eq" style="font-size:22px">x = 1</div>','.slide{transform:scale(.5)}'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
-  await check('fraction and exponent reductions are structural',wrap('<div class="eq" style="font-size:22px">x<sup style="font-size:10px">2</sup> = <math><mfrac><mn>1</mn><mn>2</mn></mfrac></math></div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
-  await check('nested base text size override is detected',wrap('<div class="eq" style="font-size:22px">x = <span style="font-size:32px">1</span></div>'),xs=>assert.ok(has(xs,'B35-TYPE-001')));
+  await check('undersized solution is detected',wrap('<div class="eq" style="font-size:10px">x = 1</div>'),xs=>assert.ok(has(xs,'B35-TYPE-001')));
+  await check('scaled slide retains design font sizes',wrap('<div class="eq" style="font-size:18px">x = 1</div>','.slide{transform:scale(.5)}'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
+  await check('fraction and exponent reductions are structural',wrap('<div class="eq" style="font-size:18px">x<sup style="font-size:10px">2</sup> = <math><mfrac><mn>1</mn><mn>2</mn></mfrac></math></div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
+  await check('nested base text size override is detected',wrap('<div class="eq" style="font-size:18px">x = <span style="font-size:32px">1</span></div>'),xs=>assert.ok(has(xs,'B35-TYPE-001')));
   await check('hidden oversized solution ignored',wrap('<div class="eq" style="visibility:hidden;font-size:34px">x = 1</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
   await check('explicit role overrides inferred solution role',wrap('<div class="eq" data-b35-content-role="note" style="font-size:16px">x = 1</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
   await check('intentional type size exception respected',wrap('<div class="eq" data-b35-allow-type-size="cover example" style="font-size:34px">x = 1</div>'),xs=>assert.equal(has(xs,'B35-TYPE-001'),false));
@@ -115,6 +122,7 @@ config.complementaryChecks.proseTypography.enabled=false;
   await check('required maths family is configurable',wrap('<div class="eq" style="font:22px Arial">x = 3</div>'),xs=>assert.equal(has(xs,'B35-TYPE-002'),false),custom);
   const proseRole=clone();proseRole.complementaryChecks.proseTypography.enabled=true;
   proseRole.complementaryChecks.proseTypography.fontFamily='Arial';
+  proseRole.complementaryChecks.proseTypography.selectors='.prompt,.step-solution';
   proseRole.complementaryChecks.proseTypography.roleContracts=[];
   const inline='<math style="font-weight:400"><mfrac><mn>16</mn><mn>20</mn></mfrac></math>';
   for(const [name,html,rule,expected] of [
@@ -137,22 +145,26 @@ config.complementaryChecks.proseTypography.enabled=false;
   const foundContrast=await check('contrast actionable evidence',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.ok(has(xs,'B35-TYPE-003')),proseRole);
   const contrast=foundContrast.find(x=>x.rule==='B35-TYPE-003');assert.equal(contrast.evidence.visualHarmonyVerified,false);assert.ok(contrast.evidence.measurements.length);for(const key of ['expected','impact','suggestedAction','confidence','verification','constraints'])assert.ok(contrast[key]);
   const roleStyle=clone();roleStyle.complementaryChecks.proseTypography.enabled=true;
-  const approvedQuestion='<p class="prompt" style="font-family:Georgia;font-weight:900">Compare <span data-b35-formula style="font-family:Georgia;font-weight:900"><math style="font-family:Georgia;font-weight:900"><mfrac><mn>16</mn><mn>20</mn></mfrac></math></span> with the whole.</p>';
+  const approvedQuestion='<p class="prompt" style="font-family:Nunito;font-weight:900">Compare <span data-b35-formula style="font-family:STIX Two Math;font-weight:400"><math style="font-family:STIX Two Math;font-weight:400"><mfrac><mn>16</mn><mn>20</mn></mfrac></math></span> with the whole.</p>';
+  await check('CH08 Nunito 900 prose with STIX Two Math 400 is an approved inline pairing',wrap(approvedQuestion),xs=>assert.equal(has(xs,'B35-TYPE-003'),false),roleStyle);
   for(const [name,html,expected] of [
     ['approved question roles pass',approvedQuestion,false],
     ['question weight must be exactly 900',approvedQuestion.replace('font-weight:900','font-weight:800'),true],
-    ['question prose family is explicit',approvedQuestion.replace('font-family:Georgia','font-family:Arial'),true],
-    ['question math shares the question prose weight',approvedQuestion.replace('data-b35-formula style="font-family:Georgia;font-weight:900"','data-b35-formula style="font-family:Georgia;font-weight:700"').replace('<math style="font-family:Georgia;font-weight:900">','<math style="font-family:Georgia;font-weight:700">'),true],
-    ['question math family is explicit',approvedQuestion.replaceAll('font-family:Georgia','font-family:Cambria Math'),true],
-    ['solution explanation 900 passes','<p class="step-solution" style="font-family:Georgia;font-weight:900">Check the result.</p>',false],
-    ['solution explanation 800 warns','<p class="step-solution" style="font-family:Georgia;font-weight:800">Check the result.</p>',true],
-    ['solution math-only rows are not prose','<p class="step-solution" style="font-family:Cambria Math;font-weight:400"><math><mn>25</mn></math></p>',false],
+    ['question prose family is explicit',approvedQuestion.replace('font-family:Nunito','font-family:Arial'),true],
+    ['question math uses the CH08 regular math weight',approvedQuestion.replace('font-weight:400','font-weight:700'),false],
+    ['question math family is explicit',approvedQuestion.replaceAll('STIX Two Math','Cambria Math'),true],
+    ['CH08 solution explanation STIX Two Math 400 passes','<p class="step-solution" style="font-family:STIX Two Math;font-weight:400">Check the result.</p>',false],
+    ['CH08 working prose STIX Two Math 400 passes','<p class="work" style="font-family:STIX Two Math;font-weight:400">Multiply both sides by the reciprocal.</p>',false],
+    ['Nunito solution explanation violates CH08 role','<p class="step-solution" style="font-family:Nunito;font-weight:800">Check the result.</p>',true],
+    ['Nunito working prose violates CH08 role','<p class="work" style="font-family:Nunito;font-weight:800">Multiply both sides by the reciprocal.</p>',true],
+    ['solution math-only rows pass','<p class="step-solution" style="font-family:STIX Two Math;font-weight:400"><math style="font-family:STIX Two Math;font-weight:400"><mn style="font-family:STIX Two Math;font-weight:400">25</mn></math></p>',false],
     ['hidden role waits for reveal',approvedQuestion.replace('class="prompt"','class="prompt" hidden').replace('font-weight:900','font-weight:800'),false],
     ['structural exponent may differ',approvedQuestion.replace('<mfrac><mn>16</mn><mn>20</mn></mfrac>','<msup><mn>2</mn><mn style="font-weight:400">3</mn></msup>'),false],
     ['labels may use different fonts',approvedQuestion.replace('Compare','<span class="tag" style="font-family:Arial;font-weight:400">LABEL</span> Compare'),false],
     ['documented role variation is explicit',approvedQuestion.replace('class="prompt"','class="prompt" data-b35-allow-prose-typography="font comparison"').replace('font-weight:900','font-weight:400'),false],
     ['nested question does not inherit solution prose contract','<div class="step-solution">'+approvedQuestion+'</div>',false]
   ])await check(name,wrap(html),xs=>assert.equal(has(xs,'B35-TYPE-004'),expected,name+': '+JSON.stringify(xs)),roleStyle);
+  const unapprovedMathWeight=await check('unapproved question math weight violates the role contract',wrap(approvedQuestion.replaceAll('font-weight:400','font-weight:700')),xs=>assert.ok(has(xs,'B35-TYPE-004')),roleStyle);
   const customRole=structuredClone(roleStyle);customRole.complementaryChecks.proseTypography.roleContracts[0].fontWeight=800;
   await check('role font weights configurable',wrap(approvedQuestion.replace('font-weight:900','font-weight:800')),xs=>assert.equal(has(xs,'B35-TYPE-004'),false),customRole);
   const roleFindings=await check('role contract actionable evidence',wrap(approvedQuestion.replace('font-weight:900','font-weight:700')),xs=>assert.ok(has(xs,'B35-TYPE-004')),roleStyle);
