@@ -78,7 +78,9 @@ function auditComplementaryChecks(config) {
     }
     visit(root);return {box:union(boxes),methods:[...methods]};
   }
-  for(const slide of slides.filter(node=>config.documentMode||node.classList.contains('active'))){
+  const markedSlides=slides.filter(node=>node.classList.contains('active'));
+  const currentSlides=config.documentMode?slides:markedSlides.length?markedSlides:slides.filter(visible);
+  for(const slide of currentSlides){
     const scale=slide.offsetWidth?slide.getBoundingClientRect().width/slide.offsetWidth:1;
     const finalMatch=/Step\s+(\d+)\s*\/\s*(\d+)/i.exec(document.querySelector('#step')?.textContent||'');
     const finalState=!finalMatch||finalMatch[1]===finalMatch[2];
@@ -118,12 +120,14 @@ function auditComplementaryChecks(config) {
           if(handledRoles.get(node)?.has(role.name))continue;
           if(!handledRoles.has(node))handledRoles.set(node,new Set());handledRoles.get(node).add(role.name);
           const style=getComputedStyle(node),actualFamily=style.fontFamily.split(',')[0].replace(/["']/g,'').trim(),actualWeight=Number(style.fontWeight)||400;
-          if((role.fontFamily&&actualFamily.toLowerCase()!==role.fontFamily.toLowerCase())||(Number.isFinite(role.fontWeight)&&actualWeight!==role.fontWeight))
+          const minimumWeight=role.minimumWeight??role.fontWeight,maximumWeight=role.maximumWeight??role.fontWeight;
+          if((role.fontFamily&&actualFamily.toLowerCase()!==role.fontFamily.toLowerCase())||
+             (Number.isFinite(minimumWeight)&&actualWeight<minimumWeight)||(Number.isFinite(maximumWeight)&&actualWeight>maximumWeight))
             measurements.push({selector:pathFor(node),text:text.slice(0,100),actualFamily,actualWeight});
         }
         if(measurements.length)emit('B35-TYPE-004',policy.roleTypographySeverity||'warning',
-          role.name+' must use '+role.fontFamily+' '+role.fontWeight+'.',owner,
-          {kind:'declared-font-role-contract',role:role.name,expectedFamily:role.fontFamily,expectedWeight:role.fontWeight,measurements,visualHarmonyVerified:false},
+          role.name+' must use '+role.fontFamily+' with the configured weight range.',owner,
+          {kind:'declared-font-role-contract',role:role.name,expectedFamily:role.fontFamily,expectedWeight:role.fontWeight,minimumWeight:role.minimumWeight,maximumWeight:role.maximumWeight,measurements,visualHarmonyVerified:false},
           {...guidance,expected:'Apply the configured family and weight for '+role.name+' consistently across lesson pages.',
             suggestedAction:'Use a shared role style for prose and complete mathematical expressions. Preserve structural fraction/script sizing; do not style an entire prose paragraph as mathematics.'});
       }
@@ -144,9 +148,16 @@ function auditComplementaryChecks(config) {
         }
         if(!prose.length)continue;
         const baseTokens=select(owner,'math mn,math mi,math mo,math mtext,.frac,.root,.katex,mjx-container').filter(n=>visible(n)&&!n.closest(excluded)&&!n.closest('[data-b35-allow-prose-typography]')&&!n.closest('msup > :not(:first-child),msub > :not(:first-child),msubsup > :not(:first-child),mroot > :not(:first-child)'));
+        const allowedPairs=proseTypography.allowedInlineMathPairs||[];
         const contrasts=baseTokens.flatMap(node=>{
           const weight=Number(getComputedStyle(node).fontWeight)||400;
-          return prose.filter(p=>Math.min(p.weight,weight)<=500&&Math.max(p.weight,weight)>=600&&Math.abs(p.weight-weight)>=(proseTypography.minimumWeightDifference??200))
+          const family=getComputedStyle(node).fontFamily.split(',')[0].replace(/["']/g,'').trim().toLowerCase();
+          return prose.filter(p=>{
+            const proseFamily=getComputedStyle(p.node).fontFamily.split(',')[0].replace(/["']/g,'').trim().toLowerCase();
+            const permitted=allowedPairs.some(pair=>pair.proseWeight===p.weight&&pair.mathWeight===weight&&
+              pair.proseFontFamily?.toLowerCase()===proseFamily&&pair.mathFontFamily?.toLowerCase()===family);
+            return !permitted&&Math.min(p.weight,weight)<=500&&Math.max(p.weight,weight)>=600&&Math.abs(p.weight-weight)>=(proseTypography.minimumWeightDifference??200);
+          })
             .map(p=>({proseSelector:pathFor(p.node),proseText:p.text.slice(0,100),proseWeight:p.weight,mathSelector:pathFor(node),mathText:node.textContent.slice(0,60),mathWeight:weight}));
         });
         if(contrasts.length)emit('B35-TYPE-003',policy.inlineMathContrastSeverity||'warning','Sentence prose and embedded mathematics mix regular and bold emphasis; review the complete sentence.',owner,
@@ -245,6 +256,52 @@ function auditComplementaryChecks(config) {
             confidence:'Computed CSS base sizes in design pixels; structural scripts, fraction parts and nested roles excluded.',
             verification:['Re-render every affected reveal state and check panel fit.','Review mathematical glyph sizes and supported viewport scaling.'],
             constraints:['Preserve mathematical content and reveal order.','Not optical font-size certification; unmarked content may need explicit role annotations.']});
+      }
+      const questionPartsMaximumFontRatio=hierarchy.questionPartsMaximumFontRatio;
+      if(Number.isFinite(questionPartsMaximumFontRatio))for(const owner of select(slide,'.prompt,.practice-question,[data-b35-content-role="question"]')){
+        if(!visible(owner)||owner.closest('[data-b35-allow-type-size]'))continue;
+        const ownerSize=parseFloat(getComputedStyle(owner).fontSize);
+        if(!Number.isFinite(ownerSize)||ownerSize<=0)continue;
+        const label=/^\s*(?:\([a-z]\)|[a-z][).])\s+\S/i;
+        const parts=select(owner,'span,div,p,li').filter(node=>{
+          if(!visible(node)||node.closest('[data-b35-allow-type-size]')||!label.test(node.textContent))return false;
+          return ![...node.children].some(child=>label.test(child.textContent));
+        });
+        const measurements=[];
+        for(const part of parts){
+          const size=parseFloat(getComputedStyle(part).fontSize),ratio=size/ownerSize;
+          if(Number.isFinite(size)&&ratio>questionPartsMaximumFontRatio)measurements.push({selector:pathFor(part),fontSizePx:size,questionFontSizePx:ownerSize,ratio:+ratio.toFixed(3),text:part.textContent.trim().slice(0,120)});
+        }
+        if(measurements.length)emit('B35-TYPE-001',policy.typographyHierarchySeverity||'warning',
+          'Lettered subquestions are larger than their question stem.',owner,
+          {kind:'question-part-relative-font-size',maximumRatio:questionPartsMaximumFontRatio,measurements},
+          {expected:'Lettered subquestions use the same base size as, or a slightly smaller size than, the question stem.',
+            impact:'Oversized (a), (b), (c) parts visually overpower the lead-in and make question hierarchy inconsistent.',
+            suggestedAction:'Set each labelled subquestion to the stem font size or smaller. Preserve the letter labels, wording, line breaks and intended emphasis.',
+            confidence:'Computed CSS font sizes for visible letter-labelled descendants compared with their enclosing question; this does not infer optical glyph size.',
+            verification:['Inspect the complete stem and every labelled part at the lesson viewport.','Recheck wrapping, panel bounds and paired solution layout after normalizing subquestion sizes.'],
+            constraints:['Do not remove labels, wording or mathematical content.','No automatic lesson changes are made.']});
+      }
+      const inlineMathRatio=hierarchy.inlineMathMaximumFontRatio;
+      if(Number.isFinite(inlineMathRatio))for(const owner of select(slide,'.prompt,.practice-question,.step-solution,.practice-answer,.work,.hint,.note,.rule,.card p')){
+        if(!visible(owner)||owner.closest('[data-b35-allow-type-size]'))continue;
+        const ownerSize=parseFloat(getComputedStyle(owner).fontSize);
+        if(!Number.isFinite(ownerSize)||ownerSize<=0)continue;
+        const measurements=[];
+        for(const math of select(owner,'math,.frac,.root,.power,[data-b35-formula]')){
+          if(!visible(math)||math.closest('sup,sub,.power'))continue;
+          const size=parseFloat(getComputedStyle(math).fontSize),ratio=size/ownerSize;
+          if(Number.isFinite(size)&&ratio>inlineMathRatio)measurements.push({selector:pathFor(math),fontSizePx:size,ownerFontSizePx:ownerSize,ratio:+ratio.toFixed(3)});
+        }
+        if(measurements.length)emit('B35-TYPE-001',policy.typographyHierarchySeverity||'warning',
+          'Inline mathematical notation is larger than its surrounding text.',owner,
+          {kind:'inline-math-font-size-ratio',maximumRatio:inlineMathRatio,measurements},
+          {expected:'Inline maths follows the surrounding prose base size; only structural fractions, roots and scripts use internal typographic scaling.',
+            impact:'Oversized inline digits interrupt the sentence and make numbers appear heavier or more prominent than the question.',
+            suggestedAction:'Set the complete inline mathematical island to 1em of its surrounding text. Preserve numerator/denominator and script scaling; keep standalone teaching equations in their own configured role.',
+            confidence:'Computed MathML/renderer root size compared with its nearest semantic prose owner; glyph ink and optical weight are not inferred.',
+            verification:['Inspect question prose with fractions and inline symbols at the lesson viewport.','Recheck wrapping, fraction bars and panel bounds after normalizing the base size.'],
+            constraints:['Do not change values or structural fraction/script ratios.','Standalone equations are governed by their own role contract.']});
       }
     }
     const commonSafeguards=['Preserve mathematical values, units, diagrams and reveal order. Do not auto-fix lesson content.',

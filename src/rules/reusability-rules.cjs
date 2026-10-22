@@ -6,7 +6,15 @@ function auditLessonReusability(config) {
   const settings=config.lessonReusability||{};
   if(settings.enabled!==true)return [];
   const issues=[],slides=[...document.querySelectorAll(config.selectors.slides)];
-  const active=config.documentMode?[document.body]:slides.filter(node=>node.classList.contains('active'));
+  const markedSlides=slides.filter(node=>node.classList.contains('active'));
+  const visibleSlide=node=>{
+    for(let current=node;current;current=current.parentElement){
+      const style=getComputedStyle(current);
+      if(style.display==='none'||style.visibility==='hidden'||Number(style.opacity)<=.01)return false;
+    }
+    const box=node.getBoundingClientRect();return box.width>0&&box.height>0;
+  };
+  const active=config.documentMode?[document.body]:markedSlides.length?markedSlides:slides.filter(visibleSlide);
   const step=/Step\s+(\d+)\s*\//i.exec(document.querySelector('#step')?.textContent||'');
   // Include unrevealed authored text and newly inserted text at later states.
   // The lesson runner de-duplicates unchanged findings across reveal steps.

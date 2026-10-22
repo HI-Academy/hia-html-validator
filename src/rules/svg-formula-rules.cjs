@@ -35,7 +35,9 @@ function auditSvgFormulas(config) {
     }
     return parts.join(" > ");
   };
-  for (const slide of slides.filter((item) => config.documentMode || item.classList.contains("active"))) {
+  const markedSlides = slides.filter(node => node.classList.contains("active"));
+  const currentSlides = config.documentMode ? slides : markedSlides.length ? markedSlides : slides.filter(visible);
+  for (const slide of currentSlides) {
     const push = (severity, message, element, evidence) => issues.push({
       rule: "B35-MATH-005", severity, message, slide: slide.id,
       runtimeSlide: slides.indexOf(slide) + 1,

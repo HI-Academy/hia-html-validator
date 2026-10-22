@@ -20,12 +20,15 @@ HI Academy lessons; general HTML disables `contentQuality` by default.
 
 Configure `complementaryChecks.contentQuality` with `enabled`, `tolerancePx`,
 `panelSelectors`, `mathSelectors`, `mathFontFamily`, `proseSelectors`,
-`proseFontFamily`, and `revealDependencies`. Math defaults to Cambria Math;
-explicit prose roles default to Nunito. Both are configurable, not hard-coded
-universal font requirements. `B35-TYPE-002` checks computed primary declarations
-on visible text, including MathML fraction tokens. Actual glyph fallback is not
-verified. Decorative labels, script-size tokens and generated radical SVG text
-are excluded. Use `data-b35-allow-font-family` for a documented variation.
+`proseFontFamily`, and `revealDependencies`. Lesson typography uses Nunito for
+question prose, hints and notes, and STIX Two Math for complete mathematical
+expressions, worked solutions and answers. Inline expressions may use the math
+face without changing the surrounding prose. Both settings remain configurable;
+this is the HI Academy lesson default, not a universal font requirement. `B35-TYPE-002` checks
+computed primary declarations on visible text, including MathML fraction tokens.
+Actual glyph fallback is not verified. Decorative labels, script-size tokens and
+generated radical SVG text are excluded. Use `data-b35-allow-font-family` for a
+documented variation.
 
 Panel checks use rendered content bounds (text ranges, canvas metrics, MathML
 and graphic boxes), with tolerance in slide design pixels. Ancestor/descendant
@@ -50,21 +53,24 @@ occupancy is intentionally final-state only, so hidden answers are not penalised
 ## Sentence and inline mathematics typography — B35-TYPE-002 / B35-TYPE-003
 
 Lesson defaults enable `complementaryChecks.proseTypography` across question,
-practice, solution, hint and note roles. General HTML defaults leave it disabled;
+practice-question, worked-solution, hint and note roles. General HTML defaults leave it disabled;
 it can be explicitly enabled. `selectors`, prose `fontFamily` (Nunito by default)
 and `minimumWeightDifference` (200) are configurable.
 
-`B35-TYPE-002` additionally reports sentence-like English text in these roles
-that declares the wrong primary font (`sentence-prose-font-family`). Ordinary
-solution sentences must not inherit a math font just because the paragraph or
-another sentence contains a fraction. Mathematical renderers, explicit equations,
-labels and structural scripts are excluded from prose-family comparison. An
+`B35-TYPE-002` additionally reports sentence-like English text in configured
+Nunito roles that declares the wrong primary font (`sentence-prose-font-family`).
+Worked solutions have a separate CH08 STIX Two Math 400 role contract; hints and
+notes remain Nunito. Mathematical renderers, explicit equations, labels and
+structural scripts are excluded from the generic prose-family comparison. An
 English word heuristic distinguishes prose from short equations; unfamiliar
 notation, non-English prose and prose incorrectly authored inside a math renderer
 still need review.
 
 `B35-TYPE-003` reports a review-required regular/bold contrast between prose and
-embedded base mathematics in the same role. It compares numeric CSS weights
+embedded base mathematics in the same role. A configured `allowedInlineMathPairs`
+entry explicitly permits a reviewed font/weight combination (the lesson default
+allows Nunito 900 prose with STIX Two Math 400 notation). Other pairs are compared
+by numeric CSS weights
 (regular <=500 versus bold >=600 with the configured minimum difference), not
 actual glyph strokes. Different prose/math families are permitted; identical CSS
 weights do not certify optical harmony. Exponent/subscript/index tokens, labels
@@ -83,11 +89,15 @@ documented intentional font comparison may use
 
 The reusable lesson defaults in `complementaryChecks.proseTypography.roleContracts`
 require question prose (`.prompt`, `.practice-question` or an explicit question
-role) to use **Nunito 900**, mathematical base tokens inside those questions to
-use **Cambria Math 700**, and solution explanation prose (`.step-solution`,
-`.practice-answer` or explicit explanation/solution roles) to use **Nunito 800**.
-These are HI Academy design defaults, not universal font requirements or
-page-specific exceptions. Each contract's selector, family and weight are editable.
+role) to use **Nunito 900**, and mathematical base tokens inside those questions
+to use **STIX Two Math 400**. CH08's worked solution/explanation text and answer
+content use **STIX Two Math 400**; hints and notes use **Nunito 800**. Labels
+remain separate interface roles. Role sizes follow the measured CH08 hierarchy:
+questions 14–18px, worked steps and working 18px, practice answers 14px,
+display formulas 26px, hints 12–13px and notes 16px.
+The shared typography is an HI Academy design default,
+not a universal font requirement or page-specific exception. Each contract's
+selector, family and weight are editable.
 The existing proseTypography switch is lesson-only by default.
 
 `B35-TYPE-004` checks computed primary family and exact numeric CSS weight on
@@ -109,9 +119,10 @@ all explanatory prose into mathematics to obtain a pass.
 
 ## Content font-size hierarchy — B35-TYPE-001
 
-Lesson defaults enforce design CSS pixel sizes: heading 18, main question 24,
-worked solution 22, explanation/instructions 18, notes/checks 16, diagram labels
-14–16, citations 11. These defaults target the 960×540 lesson system. Scaling a
+Lesson defaults enforce design CSS pixel sizes: heading 18, question 14–18,
+worked steps and work 18, practice answers 14, display formulas 26,
+explanation/instructions 18, notes/checks 16, diagram labels 14–16, citations
+11. These defaults target the 960×540 lesson system. Scaling a
 slide does not change its design-size requirement. General HTML disables this
 lesson-specific policy by default.
 
@@ -130,6 +141,21 @@ exception may use `data-b35-allow-type-size` on its container. No lesson is edit
 automatically. Resize or restructure crowded content and recheck bounds; never
 shrink maths merely to remove overflow. This checks computed base size, not
 optical glyph height or actual font fallback.
+
+Lesson defaults also set `typographyHierarchy.inlineMathMaximumFontRatio` to
+**1.05**. Inline mathematical islands in question, solution, answer, hint and
+note prose must stay within 5% of the surrounding text's base size. This catches
+MathML display-style defaults that make inline digits visibly larger than the
+sentence. Structural numerator/denominator, root indices and superscripts are
+not independently constrained; standalone equations use their own role size.
+
+`typographyHierarchy.questionPartsMaximumFontRatio` (default **1.05**) checks
+letter-labelled descendants such as `(a)` and `(b)` against their enclosing
+question stem. A part more than 5% larger than the stem receives a `B35-TYPE-001`
+finding with the measured child/stem ratio and the exact affected element. This
+relative hierarchy check supplements the absolute question-size role; it is not
+a blanket selector for every nested span. A documented
+`data-b35-allow-type-size` exception on the question owner suppresses the check.
 
 ## Radical construction — B35-MATH-020
 
@@ -209,7 +235,7 @@ The process exits with:
 | `B35-CANVAS-004` | Unexpected sibling-panel collisions | Automated |
 | `B35-CANVAS-005` | Mostly-empty large cards and isolated short lines | Heuristic warning |
 | `B35-ORDER-001` | No answer element is visible at the initial reveal | Automated |
-| `B35-TASK-001` | Student-attempt cards are dark, visually distinct and have a number chip | Automated |
+| `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
 | `B35-MATH-001` | No legacy `.frac` remains after runtime transformation | Automated |
 | `B35-MATH-002` | Formula/fraction/root boxes have non-zero readable geometry | Automated |

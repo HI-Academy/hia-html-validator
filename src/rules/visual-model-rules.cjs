@@ -83,7 +83,9 @@ function auditVisualModels(config) {
     return boxes;
   };
 
-  for (const slide of slides.filter((node) => node.classList.contains("active"))) {
+  const markedSlides = slides.filter(node => node.classList.contains("active"));
+  const currentSlides = markedSlides.length ? markedSlides : slides.filter(visible);
+  for (const slide of currentSlides) {
     const emit = (rule, severity, message, node, evidence) => {
       if (severity === "off") return;
       issues.push({ rule, severity, message, slide: slide.id, runtimeSlide: slides.indexOf(slide) + 1,
