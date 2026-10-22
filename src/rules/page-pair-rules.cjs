@@ -9,8 +9,7 @@ function normalizeQuestion(text) {
 // Self-contained, read-only browser snapshot, taken at the settled initial state.
 function capturePagePairState({ config, metadata }) {
   const settings = config.pagePairs || {};
-  const slide = [...document.querySelectorAll(config.selectors.slides)].find(node => node.classList.contains("active"));
-  if (!slide || metadata.step !== 0) return null;
+  if (metadata.step !== 0) return null;
   const shown = node => {
     for (let item = node; item; item = item.parentElement) {
       const style = getComputedStyle(item);
@@ -19,6 +18,9 @@ function capturePagePairState({ config, metadata }) {
     return true;
   };
   const visible = node => shown(node) && node.getClientRects().length > 0;
+  const slides = [...document.querySelectorAll(config.selectors.slides)];
+  const slide = slides.find(node => node.classList.contains("active")) || slides.find(visible);
+  if (!slide) return null;
   const questionSelector = settings.questionSelectors || ".prompt,.practice-question,[data-b35-question]";
   const answerSelector = settings.answerSelectors || ".step-solution,.practice-answer,[data-role='answer'],[data-b35-answer]";
   const instructionSelector = settings.instructionSelectors || ".hint,.rule,.note,[data-b35-instruction]";

@@ -78,7 +78,9 @@ function auditComplementaryChecks(config) {
     }
     visit(root);return {box:union(boxes),methods:[...methods]};
   }
-  for(const slide of slides.filter(node=>config.documentMode||node.classList.contains('active'))){
+  const markedSlides=slides.filter(node=>node.classList.contains('active'));
+  const currentSlides=config.documentMode?slides:markedSlides.length?markedSlides:slides.filter(visible);
+  for(const slide of currentSlides){
     const scale=slide.offsetWidth?slide.getBoundingClientRect().width/slide.offsetWidth:1;
     const finalMatch=/Step\s+(\d+)\s*\/\s*(\d+)/i.exec(document.querySelector('#step')?.textContent||'');
     const finalState=!finalMatch||finalMatch[1]===finalMatch[2];
