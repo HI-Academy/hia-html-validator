@@ -52,7 +52,7 @@ Use quotes around paths containing spaces. These examples are shell commands, no
 | Profile | Use | Coverage |
 |---|---|---|
 | `auto` (default) | Most runs | Selects `lesson` when section/div `.slide` markup is found; otherwise `html`. |
-| `lesson` | Compatible HI Academy/B35 decks such as Ch06–Ch08 | Existing full navigation/reveal, page-pair, formula, footer, diagram, composition and runtime checks. Requires the expected `.slide`, `.hdr`, `.body`, `.nav`, `#next`, `#counter`, `#step` shell. |
+| `lesson` | Slide-based lessons using `.slide` pages and a visible next-page control or ArrowRight navigation | Full navigation/reveal, page-pair, formula, footer, diagram, composition and runtime checks. Handles nested `div`/`section` slides, display-based current-page state, common `next()` controls, and `#step` or `#step-badge` counters. Slides may use a title-cover layout with an `<h1>` instead of the standard `.hdr`/`.body` pair. |
 | `html` | Other local `.html`/`.htm` pages | Current rendered document: horizontal overflow, clipped text-container review, duplicate IDs, broken assets, script failures, SVG scaling review and the reusable mathematical presentation checks. |
 
 ```bash

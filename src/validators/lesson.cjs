@@ -81,21 +81,62 @@ function finding(rule, severity, message, details = {}) {
 }
 
 function extractSlides(source) {
-  const slides = [];
-  const regex = /<(section|div)\b([^>]*\bclass\s*=\s*(["'])[^"']*\bslide\b[^"']*\3[^>]*)>([\s\S]*?)<\/\1>/gi;
+  const slides = [], elements = [], stack = [];
+  const voidTags = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);
+  const tokens = /<!--[\s\S]*?-->|<![^>]*>|<\/?[a-z][\w:-]*(?:[^<>"']|"[^"]*"|'[^']*')*>/gi;
   let match;
-  while ((match = regex.exec(source))) {
-    const open = `<${match[1]}${match[2]}>`;
-    const body = match[4];
-    const headerMatch = /<[^>]+\bclass\s*=\s*(["'])[^"']*\bhdr\b[^"']*\1[^>]*>([\s\S]*?)<\/[^>]+>/i.exec(body);
+  while ((match = tokens.exec(source))) {
+    const token = match[0];
+    if (/^<!--|^<!/i.test(token)) continue;
+    const tagMatch = /^<\s*(\/?)\s*([a-z][\w:-]*)/i.exec(token);
+    if (!tagMatch) continue;
+    const closing = Boolean(tagMatch[1]), tagName = tagMatch[2].toLowerCase();
+    if (closing) {
+      let index = stack.length - 1;
+      while (index >= 0 && stack[index].tagName !== tagName) index--;
+      if (index < 0) continue;
+      for (const element of stack.splice(index)) {
+        element.closeStart = match.index;
+        element.end = tokens.lastIndex;
+        elements.push(element);
+      }
+      continue;
+    }
+    const open = token;
+    const element = { tagName, open, openStart: match.index, contentStart: tokens.lastIndex, classes: classTokens(open), id: attrValue(open, "id") };
+    const selfClosing = /\/\s*>$/.test(token) || voidTags.has(tagName);
+    if (!selfClosing) stack.push(element);
+    else { element.closeStart = tokens.lastIndex; element.end = tokens.lastIndex; elements.push(element); }
+    // Script/style contents are raw text in HTML; tag-looking strings inside them
+    // must not affect the element stack (or create phantom slides).
+    if (!closing && !selfClosing && ["script", "style", "textarea", "title"].includes(tagName)) {
+      const rawEnd = new RegExp(`<\\/${tagName}\\s*>`, "ig");
+      rawEnd.lastIndex = tokens.lastIndex;
+      const rawMatch = rawEnd.exec(source);
+      if (rawMatch) {
+        const stackIndex = stack.lastIndexOf(element);
+        if (stackIndex >= 0) stack.splice(stackIndex, 1);
+        element.closeStart = rawMatch.index;
+        element.end = rawEnd.lastIndex;
+        elements.push(element);
+        tokens.lastIndex = rawEnd.lastIndex;
+      }
+    }
+  }
+  for (const element of elements.filter(item => ["div", "section"].includes(item.tagName) && item.classes.has("slide") && Number.isFinite(item.closeStart))) {
+    const body = source.slice(element.contentStart, element.closeStart);
+    const header = elements.find(item => item.classes.has("hdr") && item.openStart >= element.contentStart && item.end <= element.closeStart);
     slides.push({
-      id: attrValue(open, "id") || `source-slide-${slides.length + 1}`,
-      classes: [...classTokens(open)],
-      header: headerMatch ? stripTags(headerMatch[2]) : "",
+      id: element.id || `source-slide-${slides.length + 1}`,
+      classes: [...element.classes],
+      header: header ? stripTags(source.slice(header.contentStart, header.closeStart)) : "",
       html: body,
-      sourceIndex: slides.length + 1
+      sourceIndex: element.openStart,
+      _sourceOrder: element.openStart
     });
   }
+  slides.sort((a, b) => a._sourceOrder - b._sourceOrder);
+  slides.forEach((slide, index) => { slide.sourceIndex = index + 1; delete slide._sourceOrder; });
   return slides;
 }
 
@@ -106,7 +147,12 @@ function staticRuleShell(context) {
   if (!/<html\b[^>]*\blang\s*=\s*(["'])[^"']+\1/i.test(source)) issues.push(finding("B35-SOURCE-001", "error", "The <html> element needs a non-empty lang attribute."));
   if (!/<meta\b[^>]*charset\s*=\s*(["'])?utf-8\1?/i.test(source)) issues.push(finding("B35-SOURCE-001", "error", "Missing UTF-8 charset declaration."));
   if (!slides.length) issues.push(finding("B35-SOURCE-001", "error", "No .slide elements were found."));
-  const missingShell = slides.filter((slide) => !/\bclass\s*=\s*(["'])[^"']*\bhdr\b/i.test(slide.html) || !/\bclass\s*=\s*(["'])[^"']*\bbody\b/i.test(slide.html));
+  const missingShell = slides.filter((slide) => {
+    const hasHeader = /\bclass\s*=\s*(["'])[^"']*\bhdr\b/i.test(slide.html);
+    const hasBody = /\bclass\s*=\s*(["'])[^"']*\bbody\b/i.test(slide.html);
+    const isTitleCover = slide.sourceIndex === 1 && /<h1\b/i.test(slide.html);
+    return (!hasHeader && !isTitleCover) || (!hasBody && !isTitleCover);
+  });
   for (const slide of missingShell) {
     issues.push(finding("B35-SOURCE-001", "error", "Slide is missing .hdr or .body.", { slide: slide.id, sourceSlide: slide.sourceIndex, header: slide.header }));
   }
@@ -200,8 +246,14 @@ const staticRuleRegistry = [
 
 function runtimeAuditFunction(config) {
   const issues = [];
-  const active = [...document.querySelectorAll(`${config.selectors.slides}.active`)];
   const allSlides = [...document.querySelectorAll(config.selectors.slides)];
+  let active = [...document.querySelectorAll(`${config.selectors.slides}.active`)];
+  // Common bespoke lesson engines mark the current slide with display:flex
+  // instead of toggling an `.active` class.
+  if (!active.length) active = allSlides.filter(slide => {
+    const style = getComputedStyle(slide), rect = slide.getBoundingClientRect();
+    return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01 && rect.width > 0.5 && rect.height > 0.5;
+  });
   const nav = document.querySelector(config.selectors.navigator);
   const tolerance = config.thresholds.geometryTolerancePx;
   const overlapTolerance = config.thresholds.overlapTolerancePx;
@@ -268,12 +320,14 @@ function runtimeAuditFunction(config) {
   const slide = active[0];
   const slideRect = slide.getBoundingClientRect();
   const runtimeSlide = allSlides.indexOf(slide) + 1;
-  const stepText = document.querySelector("#step")?.textContent || "";
-  const stepMatch = /Step\s+(\d+)\s*\/\s*(\d+)/i.exec(stepText);
-  const step = stepMatch ? Number(stepMatch[1]) : 0;
-  const maxStep = stepMatch ? Number(stepMatch[2]) : Math.max(0, ...[...slide.querySelectorAll(config.selectors.reveals)].map((node) => Number(node.dataset.step) || 0));
+  const stepText = document.querySelector("#step, #step-badge, [data-step-counter]")?.textContent || "";
+  const stepMatch = /Step\s+(\d+)\s*(?:\/|of)\s*(\d+)/i.exec(stepText);
+  const maxStep = stepMatch ? Number(stepMatch[2]) : slide.querySelectorAll(config.selectors.reveals).length;
+  const visibleRevealCount = [...slide.querySelectorAll(config.selectors.reveals)].filter(visible).length;
+  const step = Math.min(maxStep, Math.max(stepMatch ? Number(stepMatch[1]) : 0, visibleRevealCount));
   const counter = document.querySelector("#counter")?.textContent || "";
-  if (counter.trim() !== `${runtimeSlide} / ${allSlides.length}`) push("B35-RUNTIME-001", "error", `Navigator counter is “${counter.trim()}”; expected “${runtimeSlide} / ${allSlides.length}”.`, document.querySelector("#counter"));
+  const counterMatch = /(\d+)\s*\/\s*(\d+)/.exec(counter);
+  if (!counterMatch || Number(counterMatch[1]) !== runtimeSlide || Number(counterMatch[2]) !== allSlides.length) push("B35-RUNTIME-001", "error", `Navigator counter is “${counter.trim()}”; expected page ${runtimeSlide} of ${allSlides.length}.`, document.querySelector("#counter"));
   if (step < 0 || step > maxStep) push("B35-RUNTIME-001", "error", `Reveal counter is outside 0..${maxStep}.`, document.querySelector("#step"));
 
   const scrollTargets = [slide, ...slide.querySelectorAll(`${config.selectors.body}, ${config.selectors.panels}`)];
@@ -471,7 +525,7 @@ async function runBrowserAudit(context) {
       }
       const meta = result.metadata;
       const stateKey = `${meta.runtimeSlide}:${meta.step}`;
-      if (stateKey === previousKey) break;
+      if (stateKey === previousKey) throw new Error(`Traversal stopped making progress at runtime slide ${meta.runtimeSlide}, reveal ${meta.step}/${meta.maxStep}; browser status is incomplete.`);
       previousKey = stateKey;
       result.issues.forEach((item) => findings.push({ ...item, state: `${meta.step}/${meta.maxStep}` }));
       states.push(meta);
@@ -490,7 +544,57 @@ async function runBrowserAudit(context) {
 
       const atEnd = meta.runtimeSlide === meta.runtimeSlides && meta.step === meta.maxStep;
       if (atEnd) break;
-      await page.locator("#next").click();
+      const beforeAdvance = await page.evaluate(slideSelector => {
+        const slides = [...document.querySelectorAll(slideSelector)];
+        const active = slides.filter(slide => slide.classList.contains("active"));
+        const visible = active.length ? active : slides.filter(slide => {
+          const style = getComputedStyle(slide), rect = slide.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01 && rect.width > 0.5 && rect.height > 0.5;
+        });
+        const current = visible.length === 1 ? slides.indexOf(visible[0]) + 1 : 0;
+        const counter = document.querySelector("#counter")?.textContent.trim() || "";
+        const stepText = document.querySelector("#step, #step-badge, [data-step-counter]")?.textContent.trim() || "";
+        const visibleReveals = [...(visible[0]?.querySelectorAll("[data-step]") || [])].filter(node => {
+          const style = getComputedStyle(node); return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01;
+        }).length;
+        return JSON.stringify([current, counter, stepText, visibleReveals]);
+      }, context.config.selectors.slides);
+      const beforeAdvanceLabel = `${meta.runtimeSlide}:${meta.step}`;
+      let activated = "#next";
+      if (await page.locator("#next").count()) {
+        await page.locator("#next").click({ timeout: 3000 });
+      } else {
+        activated = await page.evaluate(navigatorSelector => {
+          const controls = [...document.querySelectorAll("button, [role=button], a, [onclick]")];
+          const next = controls.find(node => {
+            const handler = node.getAttribute("onclick") || "";
+            const label = `${node.getAttribute("aria-label") || ""} ${node.textContent || ""}`;
+            return /(?:^|[^\w$])next\s*\(/i.test(handler) || /^(?:next|→|➜|›|❯|»|⟩)$/i.test(label.trim());
+          });
+          if (next && next.getClientRects().length) { next.click(); return "control"; }
+          const buttons = [...document.querySelectorAll(`${navigatorSelector} button, ${navigatorSelector} [role=button]`)].filter(node => node.getClientRects().length);
+          if (buttons.length) { buttons.at(-1).click(); return "navigator"; }
+          document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+          return "keyboard";
+        }, context.config.selectors.navigator);
+      }
+      await page.waitForFunction(({ previous, slideSelector }) => {
+        const slides = [...document.querySelectorAll(slideSelector)];
+        const active = slides.filter(slide => slide.classList.contains("active"));
+        const visible = active.length ? active : slides.filter(slide => {
+          const style = getComputedStyle(slide), rect = slide.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01 && rect.width > 0.5 && rect.height > 0.5;
+        });
+        const current = visible.length === 1 ? slides.indexOf(visible[0]) + 1 : 0;
+        const counter = document.querySelector("#counter")?.textContent.trim() || "";
+        const stepText = document.querySelector("#step, #step-badge, [data-step-counter]")?.textContent.trim() || "";
+        const visibleReveals = [...(visible[0]?.querySelectorAll("[data-step]") || [])].filter(node => {
+          const style = getComputedStyle(node); return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01;
+        }).length;
+        return JSON.stringify([current, counter, stepText, visibleReveals]) !== previous;
+      }, { previous: beforeAdvance, slideSelector: context.config.selectors.slides }, { timeout: 3000 }).catch(() => {
+        throw new Error(`Navigation did not advance from ${beforeAdvanceLabel} (attempted ${activated} control). Add a next control, a recognised next() handler, or ArrowRight navigation.`);
+      });
     }
     if (guard >= 2000) findings.push(finding("B35-RUNTIME-001", "error", "Browser traversal exceeded 2000 states and was stopped."));
     findings.push(...auditPagePairs(pagePairStates, context.config));

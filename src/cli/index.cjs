@@ -106,11 +106,17 @@ function main(argv){
   console.log(`Validating ${job.file} [${job.profile}]`);
   const child=spawnSync(process.execPath,args,{stdio:'pipe',encoding:'utf8',timeout:a.timeout,maxBuffer:16*1024*1024});
   let report;
-  if(child.error||child.signal||child.status===2){
+  const reportPath=path.join(job.out,'report.json');
+  if(child.error||child.signal){
    const message=child.error?.code==='ETIMEDOUT'?`Validation exceeded ${a.timeout}ms; browser coverage is incomplete.`:child.error?.message||child.stderr?.trim()||'Validation could not complete. Run doctor and inspect the input.';
    report=blockedReport(job.file,job.profile,message);writeReport(job.out,report);
+  }else if(fs.existsSync(reportPath)){
+   // Profile runners persist the detailed blocked report before exiting 2;
+   // preserve its browser diagnostics instead of replacing it with a generic CLI error.
+   report=JSON.parse(fs.readFileSync(reportPath,'utf8'));report.coverage=coverage(job.profile,!!a['static-only']);fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
   }else{
-   report=JSON.parse(fs.readFileSync(path.join(job.out,'report.json'),'utf8'));report.coverage=coverage(job.profile,!!a['static-only']);fs.writeFileSync(path.join(job.out,'report.json'),JSON.stringify(report,null,2)+'\n');
+   const message=child.stderr?.trim()||`Validation runner exited ${child.status} without writing a report.`;
+   report=blockedReport(job.file,job.profile,message);writeReport(job.out,report);
   }
   const status=report.browser.status==='BLOCKED'?2:report.summary.errors||(a['fail-on-warning']&&report.summary.warnings)?1:0;
   code=Math.max(code,status);const entry={file:job.file,profile:job.profile,exitCode:status,errors:report.summary.errors,warnings:report.summary.warnings,browser:report.browser.status,report:path.join(job.out,'report.md')};results.push(entry);
