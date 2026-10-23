@@ -14,6 +14,13 @@ All lesson browser audits and page-pair snapshots support both `.active` slide m
 
 ## Compatibility
 
+`answer-sequence-rules.cjs` captures bounded question/answer pairs on each
+forward lesson state and compares reveal dependencies with observed visibility.
+The runner retains first-entry snapshots and performs an additional backward
+navigation audit for answer resets. This separate phase reports its coverage
+under `answerSequenceCoverage`; it does not inflate forward-state counts or
+claim screenshot-pixel analysis. General document mode is unchanged.
+
 All three installed names (`hia-html-validator`, `html-validate-b35`, `b35-validate`) map to the same thin executable. Root `html-cli.cjs` re-exports the CLI helpers and still supports `node html-cli.cjs`. Root `validate-b35.cjs` preserves the original lesson-only command, including `npm run validate`. The preferred general/auto command from source is `node bin/hia-html-validator.cjs`, also available through `npm run validate:html -- ...`.
 
 Direct file imports from the former flat layout, other than the documented CLI shim, are not a supported public API. Default configuration and template files have moved into `config/` and `templates/`; update any source-relative paths in local scripts.

@@ -215,6 +215,42 @@ The process exits with:
 - `1` — one or more automated errors were found.
 - `2` — the browser stage could not run or the command was invalid.
 
+## Question before answer — B35-ORDER-002 / B35-ORDER-003
+
+Lesson mode recognises `.p-q` / `.p-a` and `.et-q` / `.et-a` inside their
+corresponding cards, plus configured question/answer selectors. A shared
+`data-step` parent does not create an attempt state: each element's earliest
+declared reveal is the maximum step on itself and its ancestors. A later
+answer step, or an independently hidden answer observed after its question,
+is required. Actual visibility is also checked at every forward state, so
+CSS that exposes a nominally later answer cannot pass on step numbers alone.
+
+Use `data-role="answer"` to identify answer conclusions in diagrams/callouts.
+For sibling panels, give the question an `id` and the answer
+`data-b35-question-ref="that-id"`. Otherwise only an unambiguous single
+question in a configured card is paired. Definitions, unpaired demonstration
+text and arbitrary words such as “longest” are not guessed to be answers;
+unmarked conclusions and multi-question wrappers need manual review or
+explicit markup. A correct answer's mathematical truth is not checked here.
+
+After forward traversal, the runner exercises available previous-page
+controls (or ArrowLeft) and compares answers hidden on first entry with both
+immediate and animation-settled visibility on return. Retained answers and
+visible fade-outs are errors. `answerSequenceCoverage` and the Markdown
+report record compared answers, visited pages, unavailable navigation and
+pages not revisited. The final forward page is not automatically revisited;
+asynchronous navigation may provide settled evidence only. These limits are
+not silently reported as a fully checked reset, and this is DOM visibility,
+not frame-by-frame screenshot analysis.
+
+`answerSequence.enabled` and `.reentry` default to true in lesson mode.
+`answers`, `questions` and `containers` configure the bounded structural
+selectors; `policy.answerSequenceSeverity` defaults to `error`. General HTML
+mode does not traverse a lesson or run these checks. Synthetic positive,
+negative, display-based, independent-gate and reset regressions run with
+`npm run test:answers` and are included in `npm test`. The validator does not
+edit inputs or fabricate reviewer approvals.
+
 ## Rules derived from B35
 
 | Rule | What it checks | Gate |
@@ -235,6 +271,8 @@ The process exits with:
 | `B35-CANVAS-004` | Unexpected sibling-panel collisions | Automated |
 | `B35-CANVAS-005` | Mostly-empty large cards and isolated short lines | Heuristic warning |
 | `B35-ORDER-001` | No answer element is visible at the initial reveal | Automated |
+| `B35-ORDER-002` | Identified question/answer pairs need a distinct question-only state, including shared revealing parents | Automated bounded structure/visibility check |
+| `B35-ORDER-003` | Previously hidden answers must reset on available previous-page navigation, without a visible fade-out | DOM visibility check; explicit coverage limits |
 | `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
 | `B35-MATH-001` | No legacy `.frac` remains after runtime transformation | Automated |

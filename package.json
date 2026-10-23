@@ -18,6 +18,7 @@
     "test:page-pairs": "node tests/test-page-pairs.cjs",
     "test:complementary": "node tests/test-complementary.cjs",
     "test:reusability": "node tests/test-reusability.cjs",
+    "test:answers": "node tests/test-answer-sequence.cjs",
     "test:cli": "node tests/test-cli.cjs",
     "test:structure": "node tests/test-structure.cjs",
     "test:package": "node tests/test-package.cjs",
