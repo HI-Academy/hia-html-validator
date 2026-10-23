@@ -12,6 +12,7 @@ const { auditVisualReview } = require("../rules/visual-review-rules.cjs");
 const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
+const { captureAnswerSequence, observeAnswerSequence, auditAnswerReentry } = require("../rules/answer-sequence-rules.cjs");
 const { configuration } = require("../core/cli-support.cjs");
 
 const MANUAL_GATES = [
@@ -491,6 +492,7 @@ async function runBrowserAudit(context) {
   const failedRequests = [];
   const pagePairStates = [];
   const reusabilityFindingKeys = new Set();
+  const answerFindingKeys = new Set(), questionHistory = new Set(), answerBaselines = new Map();
   const screenshotDir = path.join(context.out, "screenshots");
   if (context.args.screenshots) fs.mkdirSync(screenshotDir, { recursive: true });
   try {
@@ -530,6 +532,12 @@ async function runBrowserAudit(context) {
         if(!reusabilityFindingKeys.has(key)){reusabilityFindingKeys.add(key);result.issues.push(item);}
       }
       const meta = result.metadata;
+      const answerSnapshot = await page.evaluate(captureAnswerSequence, { config: context.config });
+      if (!answerBaselines.has(answerSnapshot.runtimeSlide) && answerSnapshot.runtimeSlide) answerBaselines.set(answerSnapshot.runtimeSlide, answerSnapshot);
+      for (const item of [...answerSnapshot.findings, ...observeAnswerSequence(answerSnapshot, questionHistory, context.config)]) {
+        const key = JSON.stringify([item.rule, item.runtimeSlide, item.selector]);
+        if (!answerFindingKeys.has(key)) { answerFindingKeys.add(key); result.issues.push(item); }
+      }
       const stateKey = `${meta.runtimeSlide}:${meta.step}`;
       if (stateKey === previousKey) throw new Error(`Traversal stopped making progress at runtime slide ${meta.runtimeSlide}, reveal ${meta.step}/${meta.maxStep}; browser status is incomplete.`);
       previousKey = stateKey;
@@ -603,11 +611,13 @@ async function runBrowserAudit(context) {
       });
     }
     if (guard >= 2000) findings.push(finding("B35-RUNTIME-001", "error", "Browser traversal exceeded 2000 states and was stopped."));
+    const answerReentry = await auditAnswerReentry(page, context.config, answerBaselines);
+    findings.push(...answerReentry.findings);
     findings.push(...auditPagePairs(pagePairStates, context.config));
     pageErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Page exception: ${message}`)));
     consoleErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Console error: ${message}`)));
     failedRequests.forEach((request) => findings.push(finding("B35-RUNTIME-002", context.config.policy.externalRequestFailureSeverity, `Resource failed to load: ${request.url}`, { evidence: request })));
-    return { blocked: false, findings, states, screenshots, pagePairStates, runtime: states.at(-1)?.runtimeSlides || null, consoleErrors, pageErrors, failedRequests };
+    return { blocked: false, findings, states, screenshots, pagePairStates, answerSequenceCoverage: answerReentry.coverage, runtime: states.at(-1)?.runtimeSlides || null, consoleErrors, pageErrors, failedRequests };
   } catch (error) {
     return { blocked: true, reason: error.message, findings, states, screenshots, pagePairStates, consoleErrors, pageErrors, failedRequests };
   } finally {
@@ -650,6 +660,7 @@ function reportMarkdown(report) {
   if (report.browser.reason) lines.push(`> Browser stage was not completed: ${report.browser.reason.replace(/\s+/g, " ").slice(0, 900)}`, "");
   lines.push("A clean automated report does not complete B35. The manual decisions below must still be recorded from the rendered deck.", "");
   lines.push("Automated visual-review rules inspect DOM geometry, styles and configured concepts. **No AI screenshot analysis is performed.** Screenshot approval remains a separate manual step.", "");
+  if (report.answerSequenceCoverage) lines.push("## Answer re-entry coverage", "", `- Compared hidden answers: ${report.answerSequenceCoverage.comparedAnswers ?? 0}`, `- Revisited pages: ${(report.answerSequenceCoverage.visitedSlides || []).join(", ") || "none"}`, `- Pages with hidden answers not revisited: ${(report.answerSequenceCoverage.notCheckedSlides || []).join(", ") || "none"}`, `- Limitation: ${report.answerSequenceCoverage.stopReason || "Previous-page controls are exercised; the final forward page is not automatically revisited. DOM visibility is not pixel analysis."}`, "");
   lines.push("## Findings", "");
   if (!report.findings.length) lines.push("No automated findings.", "");
   for (const [rule, items] of groupByRule(report.findings)) {
@@ -774,6 +785,7 @@ async function main() {
     findings,
     states: browser.states,
     pagePairStates: browser.pagePairStates || [],
+    answerSequenceCoverage: browser.answerSequenceCoverage || { enabled: false, stopReason: "Browser re-entry audit not run." },
     screenshots: browser.screenshots,
     manualGates: MANUAL_GATES.map(([id, label]) => ({ id, label, status: "not reviewed" }))
   };

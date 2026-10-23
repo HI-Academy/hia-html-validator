@@ -1,5 +1,12 @@
 {
   "schemaVersion": 1,
+  "answerSequence": {
+    "enabled": true,
+    "reentry": true,
+    "answers": ".p-a,.et-a,.practice-answer,.ans,[data-role=answer]",
+    "questions": ".p-q,.et-q,.qtitle,.prompt,[data-role=question]",
+    "containers": ".p-box,.et-box,.qcard,.practice-question,.student-question,[data-b35-question-answer]"
+  },
   "viewport": {
     "width": 960,
     "height": 540
@@ -185,6 +192,7 @@
     "states": ["initial", "middle", "final"]
   },
   "policy": {
+    "answerSequenceSeverity": "error",
     "teacherDirectionSeverity": "warning",
     "studentPersonalisationSeverity": "warning",
     "typographyHierarchySeverity": "warning",
