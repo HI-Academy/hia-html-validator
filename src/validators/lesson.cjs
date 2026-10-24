@@ -133,6 +133,7 @@ function extractSlides(source) {
       classes: [...element.classes],
       header: header ? stripTags(source.slice(header.contentStart, header.closeStart)) : "",
       html: body,
+      numericRevealGroups: attrValue(element.open, "data-b35-reveal-sequence") === "numeric-groups",
       sourceIndex: element.openStart,
       _sourceOrder: element.openStart
     });
@@ -190,7 +191,7 @@ function staticRuleRevealOrder(context) {
     const invalid = steps.filter((step) => !Number.isInteger(step) || step < 1);
     if (invalid.length) issues.push(finding("B35-REVEAL-001", "error", `Reveal steps must be positive integers; found ${invalid.join(", ")}.`, { slide: slide.id, sourceSlide: slide.sourceIndex, header: slide.header }));
     const ordered = steps.every((step, index) => index === 0 || step >= steps[index - 1]);
-    if (!ordered) issues.push(finding("B35-REVEAL-001", "error", `Reveal steps are not in DOM order: ${steps.join(", ")}.`, { slide: slide.id, sourceSlide: slide.sourceIndex, header: slide.header }));
+    if (!ordered && !slide.numericRevealGroups) issues.push(finding("B35-REVEAL-001", "error", `Reveal steps are not in DOM order: ${steps.join(", ")}.`, { slide: slide.id, sourceSlide: slide.sourceIndex, header: slide.header }));
     const unique = [...new Set(steps)].sort((a, b) => a - b);
     const expected = Array.from({ length: unique[unique.length - 1] || 0 }, (_, index) => index + 1);
     if (unique.join(",") !== expected.join(",")) issues.push(finding("B35-REVEAL-001", "error", `Reveal steps are not contiguous from 1: ${unique.join(", ")}.`, { slide: slide.id, sourceSlide: slide.sourceIndex, header: slide.header }));
@@ -309,9 +310,17 @@ function runtimeAuditFunction(config) {
   const runtimeSlide = allSlides.indexOf(slide) + 1;
   const stepText = document.querySelector("#step, #step-badge, [data-step-counter]")?.textContent || "";
   const stepMatch = /Step\s+(\d+)\s*(?:\/|of)\s*(\d+)/i.exec(stepText);
-  const maxStep = stepMatch ? Number(stepMatch[2]) : slide.querySelectorAll(config.selectors.reveals).length;
-  const visibleRevealCount = [...slide.querySelectorAll(config.selectors.reveals)].filter(visible).length;
-  const step = Math.min(maxStep, Math.max(stepMatch ? Number(stepMatch[1]) : 0, visibleRevealCount));
+  const revealElements = [...slide.querySelectorAll(config.selectors.reveals)];
+  const declaredSteps = revealElements.map(element => Number(element.getAttribute("data-step"))).filter(value => Number.isInteger(value) && value > 0);
+  const declaredMax = Math.max(0, ...declaredSteps);
+  const maxStep = stepMatch ? Number(stepMatch[2]) : declaredMax;
+  // A reveal beat may show several elements, including nested elements. Element
+  // count is not a step number. Prefer a valid authored counter; otherwise infer
+  // the highest visible declared beat, not the number of visible DOM nodes.
+  const visibleSteps = revealElements.filter(visible).map(element => Number(element.getAttribute("data-step"))).filter(value => Number.isInteger(value) && value > 0);
+  const step = stepMatch ? Number(stepMatch[1]) : Math.max(0, ...visibleSteps);
+  if (stepMatch && maxStep !== declaredMax) push("B35-RUNTIME-001", "error", `Reveal counter maximum is ${maxStep}; declared reveal groups end at ${declaredMax}.`, document.querySelector("#step, #step-badge, [data-step-counter]"), { declaredMax, counterMax: maxStep });
+  if (stepMatch && visibleSteps.some(value => value > step)) push("B35-RUNTIME-001", "error", "A later reveal group is visible before its counter step.", document.querySelector("#step, #step-badge, [data-step-counter]"), { counterStep: step, visibleSteps });
   const counter = document.querySelector("#counter")?.textContent || "";
   const counterMatch = /(\d+)\s*\/\s*(\d+)/.exec(counter);
   if (!counterMatch || Number(counterMatch[1]) !== runtimeSlide || Number(counterMatch[2]) !== allSlides.length) push("B35-RUNTIME-001", "error", `Navigator counter is “${counter.trim()}”; expected page ${runtimeSlide} of ${allSlides.length}.`, document.querySelector("#counter"));

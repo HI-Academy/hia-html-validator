@@ -264,6 +264,22 @@ list to clear failures. Tests: `node tests/test-text-contrast.cjs` and `npm test
 
 ## Question before answer — B35-ORDER-002 / B35-ORDER-003
 
+### Shared numeric reveal beats
+
+Several elements may share one `data-step`, including a diagram and its label
+in different columns. Runtime state uses the authored step counter when present,
+or the highest visible positive `data-step` otherwise; it never equates visible
+element count with the number of elapsed teaching beats. Counter maxima must
+match declared groups, and visible future groups still report an error.
+
+For intentional cross-column source order (for example `1,2` in one column and
+`1,2,3` in another), declare `data-b35-reveal-sequence="numeric-groups"` on that
+slide. This explicitly specifies temporal order by number rather than DOM order.
+Positive integer and contiguous-step checks, observed visibility, navigation,
+question-before-answer and answer-reset checks remain enabled. Unannotated
+descending DOM order remains an error. This does not certify teaching intent.
+Regression coverage is in `tests/test-grouped-reveals.cjs` and `npm test`.
+
 Lesson mode recognises `.p-q` / `.p-a` and `.et-q` / `.et-a` inside their
 corresponding cards, plus configured question/answer selectors. A shared
 `data-step` parent does not create an attempt state: each element's earliest
