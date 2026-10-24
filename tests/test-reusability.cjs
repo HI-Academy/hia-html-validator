@@ -18,6 +18,11 @@ await check('personalised browser title is included',wrap('<p>Find 25% of 80.</p
 await check('possessive lesson title is personalisation',wrap('<p>Find x.</p>',"Casey’s maths lesson"),['B35-CONTENT-003']);
 await check('lesson-for title is personalisation',wrap('<p>Find x.</p>','Practice for Taylor'),['B35-CONTENT-003']);
 await check('neutral year title passes',wrap('<p>Find 25% of 80.</p>'));
+await check('workflow heading is not mathematical explanation',wrap('<h2>Guided practice — teacher and student take turns</h2><div>Teacher starts the first useful move.</div><div>Teacher asks for a check, not a new method.</div>'),['B35-CONTENT-002']);
+await check('observation workflow beside question is flagged',wrap('<p>Find 47 + 32.</p><div>OBSERVE</div><p>Record independent / prompted / not yet.</p><p>Ask for one representation or explanation.</p><p>Do not teach the next step until the response is recorded.</p>'),['B35-CONTENT-002']);
+await check('turn taking pupil is detected',wrap('<p>Elinor completes the next move and says why.</p>'),['B35-CONTENT-003']);
+await check('punctuated personalised title is detected',wrap('<p>Find x.</p>','Elinor · Y2 L2 · Addition'),['B35-CONTENT-003']);
+await check('observe label and mathematical explanation are allowed',wrap('<span>OBSERVE</span><p>47 + 32 = 79. Add the tens, then the ones.</p><p>Explain why this representation works.</p>'));
 await check('topic and audience titles are not pupil identities',wrap('<p>Each has a matching side.</p>','Practice for Beginners'));
 await check('configured legitimate term avoids inferred identity',wrap('<p>Hypatia has a historical method.</p>'),[],{...config,lessonReusability:{...config.lessonReusability,allowedTerms:['Hypatia']}});
 await check('student metadata is included',wrap('<meta name="student-name" content="Taylor"><p>Find x.</p>'),['B35-CONTENT-003']);

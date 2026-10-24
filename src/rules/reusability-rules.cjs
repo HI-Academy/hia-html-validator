@@ -28,6 +28,11 @@ function auditLessonReusability(config) {
   const teacherName=new RegExp(`\\b(?:[Aa]sk|[Tt]ell|[Pp]rompt|[Ii]nvite|[Ee]ncourage)\\s+(${namePattern})\\s+to\\b`,'gu');
   const actor=new RegExp(`\\b(${namePattern})\\s+(?:has|had|earns?|earned|buys?|bought|walks?|walked|scores?|scored|spends?|spent|owns?|receives?|received|travels?|travelled|is\\s+(?:walking|buying|saving|paid))\\b`,'gu');
   const teacherPatterns=[
+    /\bguided\s+practice\s*[—–:-]\s*teacher\s+and\s+student\s+take\s+turns\b/iu,
+    /\bteacher\s+(?:starts\s+the\s+first\s+useful\s+move|asks\s+for\s+a\s+check)\b/iu,
+    /\brecord\s+independent\s*\/\s*prompted\s*\/\s*not\s+yet\b/iu,
+    /\bask\s+for\s+one\s+representation\s+or\s+explanation\b/iu,
+    /\bdo\s+not\s+teach\s+the\s+next\s+step\s+until\s+the\s+response\s+is\s+recorded\b/iu,
     /\b(?:ask|tell|prompt|invite|encourage)\s+(?:the\s+)?(?:students?|learners?|class)\b/iu,
     /\breveal\s+(?:one|each|the|all)\s+(?:\w+\s+){0,3}(?:line|step|answer|solution)s?\b/iu,
     /\bpause\s+here\b/iu,
@@ -42,7 +47,7 @@ function auditLessonReusability(config) {
       message:rule==='B35-CONTENT-002'?'Teacher-only delivery direction appears in reusable lesson content.':'Potential student-specific personalisation appears in reusable lesson content.',
       expected:'Reusable lesson HTML is student-neutral and student-facing; teacher delivery notes are kept separately.',
       impact:'Named learners and teacher pacing directions make a shared lesson appear personalised and can distract from its mathematics.',
-      suggestedAction:rule==='B35-CONTENT-002'?'Remove the teacher-only direction from student HTML or move it to a separate teacher guide. Preserve mathematical hints, questions, working and reveal behaviour.':'Remove student personalisation from titles, metadata and prose. Use an anonymous role in word problems; preserve numbers, relationships, mathematical names and source attribution.',
+      suggestedAction:rule==='B35-CONTENT-002'?'Question-side panels must explain the mathematics, not record teacher workflow. Remove only teacher directions from mixed pages, preserving questions and mathematical explanations. Remove an entire workflow-only slide only after confirming it contains no substantive question or working; then recheck navigation. Do not invent replacement solutions.':'Remove student personalisation from titles, metadata and prose. Use an anonymous role in word problems; preserve numbers, relationships, mathematical names and source attribution.',
       confidence:'Bounded text/metadata heuristic, not named-entity recognition or proof that a person is a student. Review quoted or historical uses in context.',
       verification:['Review the quoted text in the named element and all reveal states.','Search titles, metadata and dynamically generated text, then revalidate layout and navigation after authorised edits.'],
       constraints:['Detection only; no automatic deletion or anonymisation.','Retain legitimate mathematical content and names; do not weaken checks or invent exceptions to clear findings.','Script/comment strings, external documents and names outside recognised contexts need separate review.'],
@@ -62,9 +67,10 @@ function auditLessonReusability(config) {
     if(settings.personalisationEnabled===false)return;
     const hits=[];
     for(const name of names)if(new RegExp(`(?<![\\p{L}\\p{N}_])${escape(name)}(?![\\p{L}\\p{N}_])`,'iu').test(text))hits.push(name);
-    for(const re of [teacherName,actor])for(const m of text.matchAll(re))if(!protectedTerms.has(m[1].toLocaleLowerCase()))hits.push(m[1]);
+    const turnActor=new RegExp(`\\b(${namePattern})\\s+completes\\s+the\\s+next\\s+move\\b`,'gu');
+    for(const re of [teacherName,actor,turnActor])for(const m of text.matchAll(re))if(!protectedTerms.has(m[1].toLocaleLowerCase()))hits.push(m[1]);
     if(metadata){
-      for(const re of [new RegExp(`^(${namePattern})\\s+(?:Y\\s*\\d{1,2}|Year\\s+\\d{1,2}|Grade\\s+\\d{1,2})\\b`,'u'),new RegExp(`^(${namePattern})['’]s\\s+(?:[Mm]aths?|[Ll]esson|[Pp]ractice|[Ww]orksheet)\\b`,'u'),new RegExp(`(?:[Ll]esson|[Pp]ractice|[Ww]orksheet)\\s+for\\s+(${namePattern})\\b`,'u')]){
+      for(const re of [new RegExp(`^(${namePattern})\\s*[·|—–:-]?\\s*(?:Y\\s*\\d{1,2}|Year\\s+\\d{1,2}|Grade\\s+\\d{1,2})\\b`,'u'),new RegExp(`^(${namePattern})['’]s\\s+(?:[Mm]aths?|[Ll]esson|[Pp]ractice|[Ww]orksheet)\\b`,'u'),new RegExp(`(?:[Ll]esson|[Pp]ractice|[Ww]orksheet)\\s+for\\s+(${namePattern})\\b`,'u')]){
         const m=text.match(re);if(m&&!protectedTerms.has(m[1].toLocaleLowerCase()))hits.push(m[1]);
       }
     }
