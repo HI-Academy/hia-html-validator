@@ -10,6 +10,7 @@ const { auditFormulaStyles } = require("../rules/formula-style-rules.cjs");
 const { auditVisualModels } = require("../rules/visual-model-rules.cjs");
 const { auditVisualReview } = require("../rules/visual-review-rules.cjs");
 const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs");
+const { auditTextContrast } = require("../rules/text-contrast-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
 const { captureAnswerSequence, observeAnswerSequence, auditAnswerReentry } = require("../rules/answer-sequence-rules.cjs");
@@ -271,10 +272,6 @@ function runtimeAuditFunction(config) {
     });
     return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
   };
-  const contrast = (a, b) => {
-    const l1 = luminance(a), l2 = luminance(b);
-    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-  };
   const visible = (element) => {
     if (!element) return false;
     const style = getComputedStyle(element);
@@ -285,17 +282,6 @@ function runtimeAuditFunction(config) {
     if (element.id) return `#${element.id}`;
     const classes = [...element.classList].slice(0, 3).join(".");
     return `${element.tagName.toLowerCase()}${classes ? `.${classes}` : ""}`;
-  };
-  const effectiveBackground = (element) => {
-    let current = element;
-    while (current) {
-      const style = getComputedStyle(current);
-      if (style.backgroundImage && style.backgroundImage !== "none") return null;
-      const color = parseColor(style.backgroundColor);
-      if (color && color[3] > 0.98) return color;
-      current = current.parentElement;
-    }
-    return [255, 255, 255, 1];
   };
   const overlap = (a, b) => {
     const width = Math.min(a.right, b.right) - Math.max(a.left, b.left);
@@ -451,22 +437,6 @@ function runtimeAuditFunction(config) {
     }
   }
 
-  const textCandidates = [...slide.querySelectorAll("h1,h2,h3,p,.formula,.prompt,.hint,.step-solution,.practice-answer,.diagram-caption,svg text")].filter((element) => visible(element) && (element.textContent || "").trim());
-  for (const element of textCandidates) {
-    // SVG rectangles/paths can paint the text background independently of the
-    // ancestor CSS background. Without paint sampling its contrast is unknown.
-    if (element.closest("svg")) continue;
-    const style = getComputedStyle(element);
-    const foreground = parseColor(element.tagName.toLowerCase() === "text" ? style.fill : style.color);
-    const background = effectiveBackground(element);
-    if (!foreground || !background) continue;
-    const ratio = contrast(foreground, background);
-    const fontSize = parseFloat(style.fontSize) || 0;
-    const weight = Number(style.fontWeight) || 400;
-    const large = fontSize >= 24 || (fontSize >= 18.66 && weight >= 700);
-    const minimum = large ? config.thresholds.minimumContrastLarge : config.thresholds.minimumContrastNormal;
-    if (ratio + 0.05 < minimum) push("B35-CONTRAST-001", config.policy.contrastSeverity, `Sampled contrast is ${ratio.toFixed(2)}:1; configured minimum is ${minimum}:1.`, element, { ratio, minimum, foreground: style.color || style.fill, background: background.slice(0, 3), fontSize, fontWeight: weight, text: (element.textContent || "").trim().slice(0, 100) });
-  }
 
   return {
     issues,
@@ -536,6 +506,7 @@ async function runBrowserAudit(context) {
       result.issues.push(...await page.evaluate(auditVisualModels, context.config));
       result.issues.push(...await page.evaluate(auditVisualReview, context.config));
       result.issues.push(...await page.evaluate(auditComplementaryChecks, context.config));
+      result.issues.push(...await page.evaluate(auditTextContrast, context.config));
       for(const item of await page.evaluate(auditLessonReusability, context.config)){
         const key=JSON.stringify([item.rule,item.slide,item.selector,item.evidence.attribute,item.evidence.text]);
         if(!reusabilityFindingKeys.has(key)){reusabilityFindingKeys.add(key);result.issues.push(item);}

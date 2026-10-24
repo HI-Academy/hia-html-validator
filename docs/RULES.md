@@ -215,6 +215,53 @@ The process exits with:
 - `1` — one or more automated errors were found.
 - `2` — the browser stage could not run or the command was invalid.
 
+## Text on coloured cards — B35-CONTRAST-001 / 002 / 003
+
+All visible direct text is inspected, including plain `div`, `span`, `b`, labels,
+and MathML tokens. This is not limited to known component classes. Each nested
+card uses its own CSS background, not the outer task card's colour. Transparent
+backgrounds, text alpha and ancestor group opacity are composited against their
+ancestors. The current lesson page is checked on every visited reveal; document
+mode checks its current visible body. Hidden/revealed-later text is checked only
+when visible; configured decorative watermark selectors are excluded.
+
+Default pairing guidance (not an arbitrary colour-name whitelist):
+
+| Card background | Suggested text |
+|---|---|
+| Navy `#1A2B5F` | White `#FFFFFF` |
+| Pale blue `#D9F7FF` | Navy `#1A2B5F` or slate `#1E293B` |
+| Pale yellow `#FFF3BF` | Navy or slate, not inherited white |
+| Pale green `#DCFCE7` | Navy or slate, not inherited white |
+| Pale orange `#FFF0D6` | Navy or slate, not inherited white |
+| Saturated teal, green, purple, orange, or custom colour | Measure the actual pair; white is not automatically valid |
+
+The configured minima are normally **4.5:1**, or **3:1** for large text (at least
+24 CSS px regular, or 18⅔ CSS px and weight 700+). These use the
+[WCAG contrast-minimum definition](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+as a legibility metric, not a claim of full WCAG certification. A near-threshold
+failure is not rounded up to a pass. Existing `thresholds.minimumContrastNormal`
+and `thresholds.minimumContrastLarge` remain configurable.
+
+`B35-CONTRAST-002` defaults to **error** through
+`policy.cardTextContrastSeverity`. Non-card text keeps `B35-CONTRAST-001` and
+`policy.contrastSeverity`. Findings include the exact text/background selectors,
+computed effective RGB colours, unrounded ratio, threshold, font size/weight,
+and passing navy/slate/white alternatives when available after compositing.
+Recommendations may be empty when opacity prevents these alternatives passing.
+
+SVG paint order, gradients/images, background-clipped text, filters/blends and
+unsupported CSS colour spaces instead produce **review-required**
+`B35-CONTRAST-003` (`policy.contrastReviewSeverity`). No screenshot pixels are
+sampled. Pseudo-elements, sibling overlays, images of text, clipping geometry,
+anti-aliasing and optical readability still need visual inspection. An opaque
+inner card can mask an outer gradient, but an unresolved painted background must
+not be claimed safe. This is not an accessibility suite.
+
+`textContrast.enabled` controls this audit; `textContrast.decorativeSelectors`
+defaults to `.hi-wm,.watermark,.watermark-text`. Do not add teaching text to this
+list to clear failures. Tests: `node tests/test-text-contrast.cjs` and `npm test`.
+
 ## Question before answer — B35-ORDER-002 / B35-ORDER-003
 
 ### Shared numeric reveal beats
@@ -322,7 +369,9 @@ edit inputs or fabricate reviewer approvals.
 | `B35-COMPOSITION-001` | Large panels have low content occupancy or columns leave substantial unused height | Final-state review warning |
 | `B35-COMPOSITION-002` | Related panels have very different densities, or adjacent teaching blocks have insufficient clearance | Final-state review warning |
 | `B35-SVG-001` | SVG has a `viewBox` and non-zero geometry; accessible-name check is optional and off by default | Automated |
-| `B35-CONTRAST-001` | Sampled visible text meets configured contrast ratios | Heuristic warning |
+| `B35-CONTRAST-001` | Visible direct text meets configured CSS colour contrast ratios outside cards | Warning |
+| `B35-CONTRAST-002` | Card text contrasts with its own nested/painted CSS background | Error |
+| `B35-CONTRAST-003` | Background/foreground paint cannot be resolved by solid-colour CSS compositing | Review warning |
 | `B35-RUNTIME-002` | No page exception, console error or failed essential local resource | Automated |
 
 ## SVG formula collision and alignment rule
@@ -452,7 +501,7 @@ Run **all browser regression checks** with `npm test`, or only the new style che
 - Runtime checks inspect the post-script DOM, so decks that merge pages or convert fractions on load are tested in their delivered state.
 - The browser waits for reveal transitions before measuring or capturing a state. Source task-colour warnings are cleared when computed browser styles verify all the corresponding cards.
 - Math ink outside a line box is a review warning when overflow is visible; it is not automatically labelled clipping. A clipped or scrolling container still fails the bounds check.
-- SVG text contrast requires visual review: CSS ancestor backgrounds do not account for coloured rectangles and paths painted behind labels. Gradient-background text also remains a visual-review item.
+- SVG text contrast requires visual review: CSS ancestor backgrounds do not account for coloured rectangles and paths painted behind labels. Gradient/image backgrounds and unsupported colour effects produce `B35-CONTRAST-003`, not an invented ratio or silent pass.
 - Initial, middle and final images are evidence shortcuts. B35 still requires a reviewer to inspect every meaningful reveal state; the geometry checks do visit every state even when only three are captured.
 - A screenshot baseline is intentionally not included. These lesson packs change materially during compaction, so B35 calls for reviewed evidence rather than blindly accepting a pixel diff.
 
