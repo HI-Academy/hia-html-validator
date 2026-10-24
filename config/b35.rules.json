@@ -1,5 +1,9 @@
 {
   "schemaVersion": 1,
+  "textContrast": {
+    "enabled": true,
+    "decorativeSelectors": ".hi-wm,.watermark,.watermark-text"
+  },
   "answerSequence": {
     "enabled": true,
     "reentry": true,
@@ -207,6 +211,8 @@
     "taskCardStyleSeverity": "error",
     "minimumFontSeverity": "warning",
     "contrastSeverity": "warning",
+    "cardTextContrastSeverity": "error",
+    "contrastReviewSeverity": "warning",
     "svgFormulaCollisionSeverity": "error",
     "svgFormulaAxisSeverity": "warning",
     "formulaTypographySeverity": "warning",
