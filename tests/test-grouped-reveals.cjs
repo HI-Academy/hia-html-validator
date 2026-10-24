@@ -1,0 +1,21 @@
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),{spawnSync}=require("node:child_process");
+const root=path.resolve(__dirname,".."),temp=fs.mkdtempSync(path.join(os.tmpdir(),"hia-grouped-reveals-")),tests=[];
+function fixture({counter=true,sequence=true,steps=[1,2,1],stalled=false,leak=false,maximum=2}={}){
+ return `<!doctype html><html lang="en"><meta charset="utf-8"><style>.slide{display:none;width:960px;height:540px}.slide.active{display:block}[data-step]{visibility:hidden;opacity:0}[data-step].visible{visibility:visible;opacity:1}.nav{position:fixed;bottom:0}</style><body>
+ <section id="one" class="slide active" ${sequence?'data-b35-reveal-sequence="numeric-groups"':''}><div class="hdr">Grouped reasoning</div><div class="body"><p id="question">Find the total.</p><div data-step="${steps[0]}">First model<span data-step="${steps[0]}">Nested label</span></div><p data-step="${steps[1]}">Second reasoning move</p><p data-step="${steps[2]}" ${leak?'data-role="answer" data-b35-question-ref="question" style="visibility:visible;opacity:1"':''}>Synchronous model label</p></div></section>
+ <section id="two" class="slide"><div class="hdr">Summary</div><div class="body">Finished</div></section>
+ <div class="nav"><button id="prev">Back</button><span id="counter"></span>${counter?'<span id="step"></span>':''}<button id="next">Next</button></div>
+ <script>let p=0,r=0;const slides=[...document.querySelectorAll('.slide')];function render(){slides.forEach((s,i)=>s.classList.toggle('active',i===p));slides[p].querySelectorAll('[data-step]').forEach(e=>e.classList.toggle('visible',+e.dataset.step<=r));document.getElementById('counter').textContent=(p+1)+' / 2';const c=document.getElementById('step');if(c)c.textContent='Step '+r+' / '+(p===0?${maximum}:0);}document.getElementById('next').onclick=()=>{${stalled?'return;':`if(p===0&&r<${maximum})r++;else {p=1;r=0;}render();`}};document.getElementById('prev').onclick=()=>{p=0;r=0;render();};render();</script></body></html>`;
+}
+function run(name,opts){const input=path.join(temp,name+'.html'),out=path.join(temp,name);fs.writeFileSync(input,fixture(opts));const child=spawnSync(process.execPath,[path.join(root,'bin/hia-html-validator.cjs'),input,'--profile','lesson','--no-screenshots','--out',out],{encoding:'utf8',timeout:60000});assert.ok(!child.error,String(child.error));return JSON.parse(fs.readFileSync(path.join(out,'report.json')));}
+try{
+ for(const counter of [true,false]){const r=run(counter?'counter':'inferred',{counter});assert.equal(r.browser.status,'COMPLETED');assert.equal(r.metrics.revealStatesInspected,4);assert.deepEqual(r.states.map(s=>[s.runtimeSlide,s.step]),[[1,0],[1,1],[1,2],[2,0]]);assert.ok(!r.findings.some(f=>f.rule==='B35-RUNTIME-001'||f.rule==='B35-REVEAL-001'));tests.push('shared/nested reveals traverse every beat '+(counter?'with a counter':'without a counter'));}
+ let r=run('unannotated',{sequence:false});assert.ok(r.findings.some(f=>f.rule==='B35-REVEAL-001'&&/DOM order/.test(f.message)));tests.push('unannotated descending source order remains an error');
+ r=run('invalid',{steps:[0,2,1]});assert.ok(r.findings.some(f=>f.rule==='B35-REVEAL-001'&&/positive/.test(f.message)));tests.push('numeric group declaration does not waive invalid steps');
+ r=run('gap',{steps:[1,3,1],maximum:3});assert.ok(r.findings.some(f=>f.rule==='B35-REVEAL-001'&&/contiguous/.test(f.message)));tests.push('numeric group declaration does not waive missing beats');
+ r=run('counter-mismatch',{maximum:3});assert.ok(r.findings.some(f=>f.rule==='B35-RUNTIME-001'&&/maximum/.test(f.message)));tests.push('false counter maximum remains an error');
+ r=run('stalled',{stalled:true});assert.equal(r.browser.status,'BLOCKED');tests.push('genuinely stalled navigation remains incomplete');
+ r=run('leak',{leak:true});assert.ok(r.findings.some(f=>f.rule==='B35-ORDER-001'||f.rule==='B35-ORDER-002'));assert.ok(r.findings.some(f=>f.rule==='B35-RUNTIME-001'&&/later reveal/.test(f.message)));tests.push('premature answers and visible future groups remain errors');
+ console.log(JSON.stringify({passed:tests.length,failed:0,tests},null,2));
+}finally{fs.rmSync(temp,{recursive:true,force:true});}
