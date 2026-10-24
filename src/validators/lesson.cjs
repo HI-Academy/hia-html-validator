@@ -56,6 +56,11 @@ function countMatches(text, regex) {
   return [...text.matchAll(regex)].length;
 }
 
+function countClassToken(source, token) {
+  return [...source.matchAll(/\bclass\s*=\s*(["'])([^"']*)\1/gi)]
+    .filter(([, , classes]) => classes.split(/\s+/).includes(token)).length;
+}
+
 function stripTags(value) {
   return value
     .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
@@ -201,7 +206,7 @@ function staticRuleRevealOrder(context) {
 
 function staticRuleFractions(context) {
   const issues = [];
-  const legacy = countMatches(context.source, /\bclass\s*=\s*(["'])[^"']*\bfrac\b[^"']*\1/gi);
+  const legacy = countClassToken(context.source, "frac");
   const mathml = countMatches(context.source, /<mfrac\b/gi);
   if (legacy) {
     issues.push(finding("B35-MATH-001", context.config.policy.legacyFractionSourceSeverity, `${legacy} legacy .frac reference(s) remain in source. A browser run must prove they are replaced before acceptance.`, { evidence: { legacySourceCount: legacy, sourceMfracCount: mathml } }));
@@ -758,7 +763,7 @@ async function main() {
       runtimeSlides: browser.runtime,
       revealStatesInspected: browser.states.length,
       screenshotsCaptured: browser.screenshots.length,
-      sourceLegacyFractionReferences: countMatches(source, /\bclass\s*=\s*(["'])[^"']*\bfrac\b[^"']*\1/gi),
+      sourceLegacyFractionReferences: countClassToken(source, "frac"),
       sourceMathMLFractions: countMatches(source, /<mfrac\b/gi)
     },
     browser: { status: browserStatus, reason: browser.reason || null, consoleErrors: browser.consoleErrors || [], pageErrors: browser.pageErrors || [], failedRequests: browser.failedRequests || [] },
