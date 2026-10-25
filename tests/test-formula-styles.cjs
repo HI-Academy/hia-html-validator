@@ -69,6 +69,11 @@ async function main() {
     await check("answer chip size is not formula size", wrap('<span class="answer-tag" style="font-size:8px">ANSWER 1</span> x = 2'), "B35-MATH-007", false);
     await check("mixed-number percent does not create fake spacing", wrap(`3 ${fraction}% = 3.5%`), "B35-MATH-009", false);
     await check("font change within MathML equation warns", wrap('<math><mi style="font-family:Georgia">x</mi><mo>=</mo><mn>1</mn></math>'), "B35-MATH-006", true);
+    const proseMath = '<p style="font-family:Arial;font-weight:900">How many sixths equal <math style="font-family:Georgia;font-weight:400"><mfrac><mn>1</mn><mn>2</mn></mfrac></math> in this model?</p>';
+    await check("inline maths in question prose uses a separate family", wrap(proseMath), "B35-MATH-006", false);
+    await check("inline maths in question prose uses a separate weight", wrap(proseMath), "B35-MATH-016", false);
+    await check("two differently styled maths tokens in prose still warn", wrap('<p>Compare these two fractions: <math style="font-family:Georgia"><mn>1</mn></math> and <math style="font-family:Arial"><mn>2</mn></math>.</p>'), "B35-MATH-006", true);
+    await check("one short equation still checks prose against maths", wrap('<math style="font-family:Georgia"><mn>1</mn></math> = 2'), "B35-MATH-006", true);
     await check("size change within MathML equation warns", wrap('<math><mi style="font-size:8px">x</mi><mo>=</mo><mn>1</mn></math>'), "B35-MATH-007", true);
     await check("MathML exponent size is structural", wrap('<math><msup><mi>x</mi><mn>2</mn></msup><mo>=</mo><mn>4</mn></math>'), "B35-MATH-007", false);
 
