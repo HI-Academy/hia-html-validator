@@ -175,21 +175,28 @@ function auditFormulaStyles(config) {
       const values = atoms(root);
       if (!values.length) continue;
       const typographyValues = values.filter((value) => value.semantic || /[\d=+−×÷%％a-z]/i.test(value.text));
+      // A teaching sentence may contain inline MathML without being one
+      // equation. Compare maths with maths in that case, not Nunito prose
+      // against the deliberately different STIX maths role.
+      const proseWords = values.filter(value => !value.semantic)
+        .flatMap(value => value.text.match(/[A-Za-z]{2,}/g) || []);
+      const inlineProse = proseWords.length >= 3 && values.some(value => value.semantic);
+      const equationValues = inlineProse ? typographyValues.filter(value => value.semantic) : typographyValues;
       if (!root.closest("[data-b35-allow-formula-style]")) {
-        const fontNodes = typographyValues.flatMap((value) => value.node.localName === "math"
+        const fontNodes = equationValues.flatMap((value) => value.node.localName === "math"
           ? [value.node, ...value.node.querySelectorAll("mi,mn,mo,mtext")].filter(visible) : [value.node]);
         const families = [...new Set(fontNodes.map(family))];
         if (families.length > 1) emit("B35-MATH-006", typographySeverity,
           `One formula uses different computed font families: ${families.join(", ")}.`, root, {
             kind: "within-formula-family", families,
-            tokens: typographyValues.map((value) => ({ text: value.node.getAttribute("aria-label") || value.text.trim().slice(0, 60), family: family(value.node), selector: selector(value.node) }))
+            tokens: equationValues.map((value) => ({ text: value.node.getAttribute("aria-label") || value.text.trim().slice(0, 60), family: family(value.node), selector: selector(value.node) }))
           });
-        const sizes = typographyValues.flatMap((value) => value.node.localName === "math" ? baseMathTokens(value.node).map(fontSize) : [fontSize(value.node)]).filter((size) => size > 0);
+        const sizes = equationValues.flatMap((value) => value.node.localName === "math" ? baseMathTokens(value.node).map(fontSize) : [fontSize(value.node)]).filter((size) => size > 0);
         const ratio = sizes.length ? Math.max(...sizes) / Math.min(...sizes) : 1;
         if (ratio > sizeRatio + 0.01) emit("B35-MATH-007", typographySeverity,
           `Base formula font sizes differ by a factor of ${ratio.toFixed(2)}; allowed maximum is ${sizeRatio}.`, root,
           { kind: "within-formula-size", minimumPx: Math.min(...sizes), maximumPx: Math.max(...sizes), ratio });
-        const weightTokens = typographyValues.flatMap(value => value.node.localName === "math"
+        const weightTokens = equationValues.flatMap(value => value.node.localName === "math"
           ? baseWeightTokens(value.node).map(node => ({node,text:node.textContent})) : [value]);
         const weights = weightTokens.map(value => ({selector:selector(value.node),text:value.text.trim().slice(0,80),
           weight:Number(getComputedStyle(value.node).fontWeight)||400}));
