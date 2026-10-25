@@ -38,6 +38,9 @@ function auditLessonReusability(config) {
     /\bpause\s+here\b/iu,
     /\bwork\s+together\s+before\s+revealing\b/iu,
     /\bbefore\s+opening\s+the\s+answer\s+slide\b/iu,
+    /\bteacher\s+(?:language|talk|prompt)\b\s*:?/iu,
+    /\bteacher\s*:\s*(?=\S)/iu,
+    /\banswers?\s+appear\s+after\s+(?:the\s+)?students?\s+try\b/iu,
     /\b(?:teacher(?:['’]s)?\s+(?:note|instruction|direction)|for\s+the\s+teacher)\b/iu
   ];
   function emit(rule,node,slide,text,kind,matches,attribute){

@@ -20,6 +20,12 @@ await check('lesson-for title is personalisation',wrap('<p>Find x.</p>','Practic
 await check('neutral year title passes',wrap('<p>Find 25% of 80.</p>'));
 await check('workflow heading is not mathematical explanation',wrap('<h2>Guided practice — teacher and student take turns</h2><div>Teacher starts the first useful move.</div><div>Teacher asks for a check, not a new method.</div>'),['B35-CONTENT-002']);
 await check('observation workflow beside question is flagged',wrap('<p>Find 47 + 32.</p><div>OBSERVE</div><p>Record independent / prompted / not yet.</p><p>Ask for one representation or explanation.</p><p>Do not teach the next step until the response is recorded.</p>'),['B35-CONTENT-002']);
+await check('teacher-facing labels are flagged in ordinary cards',wrap('<div>Teacher language</div><p>Teacher talk: Compare these fractions.</p><div>Teacher prompt</div>'),['B35-CONTENT-002']);
+await check('teacher turn cue is flagged but mathematical question remains',wrap('<p>Teacher: Which two operations do you need?</p><p>Find 47 + 32.</p>'),['B35-CONTENT-002']);
+await check('delivery timing is flagged on mixed practice page',wrap('<p>Split both numbers, then add. Answers appear after students try.</p><p>23 × 14</p>'),['B35-CONTENT-002']);
+await check('student-facing thinking prompt remains valid',wrap('<div>Think: Which two operations do you need?</div><p>Find 47 + 32.</p>'));
+await check('teacher as a word-problem actor is not a delivery cue',wrap('<p>A teacher has 168 stickers and puts 12 on each sheet. How many sheets?</p>'));
+await check('source attribution is not a delivery cue',wrap('<h2>Teacher-written Practice</h2><p>Find 23 × 14.</p>'));
 await check('turn taking pupil is detected',wrap('<p>Elinor completes the next move and says why.</p>'),['B35-CONTENT-003']);
 await check('punctuated personalised title is detected',wrap('<p>Find x.</p>','Elinor · Y2 L2 · Addition'),['B35-CONTENT-003']);
 await check('observe label and mathematical explanation are allowed',wrap('<span>OBSERVE</span><p>47 + 32 = 79. Add the tens, then the ones.</p><p>Explain why this representation works.</p>'));
