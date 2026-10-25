@@ -125,13 +125,14 @@
       "fontFamily": "Nunito",
       "minimumWeightDifference": 200,
       "allowedInlineMathPairs": [
-        {"proseFontFamily":"Nunito","proseWeight":900,"mathFontFamily":"STIX Two Math","mathWeight":400}
+        {"proseFontFamily":"Nunito","proseWeight":900,"mathFontFamily":"STIX Two Math","mathWeight":400},
+        {"proseFontFamily":"Nunito","proseWeight":800,"mathFontFamily":"STIX Two Math","mathWeight":400}
       ],
       "roleContracts": [
         {"name":"question-prose","selector":".prompt,.practice-question,[data-b35-content-role=question]","kind":"prose","fontFamily":"Nunito","fontWeight":900},
         {"name":"question-math","selector":".prompt,.practice-question,[data-b35-content-role=question]","kind":"math","fontFamily":"STIX Two Math","fontWeight":400},
         {"name":"solution-math","selector":".step-solution,.practice-answer,.work,[data-b35-content-role=explanation],[data-b35-content-role=solution]","kind":"math","fontFamily":"STIX Two Math","fontWeight":400},
-        {"name":"solution-prose","selector":".step-solution,.practice-answer,.work,[data-b35-content-role=explanation],[data-b35-content-role=solution]","kind":"prose","fontFamily":"STIX Two Math","fontWeight":400},
+        {"name":"solution-prose","selector":".step-solution,.practice-answer,.work,[data-b35-content-role=explanation],[data-b35-content-role=solution]","kind":"prose","fontFamily":"Nunito","fontWeight":800,"minimumWeight":800,"maximumWeight":900},
         {"name":"hint-prose","selector":".hint,[data-b35-content-role=hint]","kind":"prose","fontFamily":"Nunito","fontWeight":800},
         {"name":"note-prose","selector":".note,.rule,.warning,.check,[data-b35-content-role=note]","kind":"prose","fontFamily":"Nunito","fontWeight":800}
       ]

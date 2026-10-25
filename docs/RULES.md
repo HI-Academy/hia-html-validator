@@ -59,7 +59,8 @@ and `minimumWeightDifference` (200) are configurable.
 
 `B35-TYPE-002` additionally reports sentence-like English text in configured
 Nunito roles that declares the wrong primary font (`sentence-prose-font-family`).
-Worked solutions have a separate CH08 STIX Two Math 400 role contract; hints and
+Worked-solution English prose uses a separate Nunito 800–900 role contract;
+mathematical expressions in those solutions use STIX Two Math 400. Hints and
 notes remain Nunito. Mathematical renderers, explicit equations, labels and
 structural scripts are excluded from the generic prose-family comparison. An
 English word heuristic distinguishes prose from short equations; unfamiliar
@@ -69,7 +70,7 @@ still need review.
 `B35-TYPE-003` reports a review-required regular/bold contrast between prose and
 embedded base mathematics in the same role. A configured `allowedInlineMathPairs`
 entry explicitly permits a reviewed font/weight combination (the lesson default
-allows Nunito 900 prose with STIX Two Math 400 notation). Other pairs are compared
+allows Nunito 800 or 900 prose with STIX Two Math 400 notation). Other pairs are compared
 by numeric CSS weights
 (regular <=500 versus bold >=600 with the configured minimum difference), not
 actual glyph strokes. Different prose/math families are permitted; identical CSS
@@ -90,8 +91,9 @@ documented intentional font comparison may use
 The reusable lesson defaults in `complementaryChecks.proseTypography.roleContracts`
 require question prose (`.prompt`, `.practice-question` or an explicit question
 role) to use **Nunito 900**, and mathematical base tokens inside those questions
-to use **STIX Two Math 400**. CH08's worked solution/explanation text and answer
-content use **STIX Two Math 400**; hints and notes use **Nunito 800**. Labels
+to use **STIX Two Math 400**. Worked-solution/explanation English text and answer
+prose use **Nunito 800–900**, while complete mathematical expressions within them
+use **STIX Two Math 400**; hints and notes use **Nunito 800**. Labels
 remain separate interface roles. Role sizes follow the measured CH08 hierarchy:
 questions 14–18px, worked steps and working 18px, practice answers 14px,
 display formulas 26px, hints 12–13px and notes 16px.
@@ -100,7 +102,7 @@ not a universal font requirement or page-specific exception. Each contract's
 selector, family and weight are editable.
 The existing proseTypography switch is lesson-only by default.
 
-`B35-TYPE-004` checks computed primary family and exact numeric CSS weight on
+`B35-TYPE-004` checks computed primary family and configured numeric CSS weight range on
 visible text. It checks inline math even in `data-b35-formula` wrappers and in
 math-only questions. It excludes labels and structural exponent/subscript/index
 tokens, preserves fraction sizing, and resolves nested roles to their nearest
