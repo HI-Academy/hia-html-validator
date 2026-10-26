@@ -89,6 +89,34 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // ORDER-004: An example prompt can be deliberately held until concept
+    // cards have been revealed. A visible prompt beside multiple still-hidden
+    // concept cards is reviewable, not proof of an error: question-first pages
+    // intentionally present their prompt at entry.
+    if (settings.conceptBeforeExampleEnabled !== false
+      && !slide.matches('[data-b35-question-first],[data-b35-allow-early-example]')
+      && !/\b(?:try first|try it first|question first|practice|challenge)\b/i.test(slide.querySelector(config.selectors.header)?.textContent || '')) {
+      const conceptCards = [...slide.querySelectorAll('.qcard[data-step],.concept-card[data-step],[data-b35-concept][data-step]')];
+      if (conceptCards.length >= 2 && conceptCards.every(card => !visible(card))) {
+        for (const prompt of slide.querySelectorAll('[data-b35-example-prompt],.note')) {
+          if (!visible(prompt) || (!prompt.matches('[data-b35-example-prompt]') && !/^\s*example\s*:/i.test(prompt.textContent || ''))) continue;
+          review('B35-ORDER-004','Example prompt is visible while the preceding concept cards are still hidden.',prompt,{
+            kind:'example-before-concept-reveal',prompt:(prompt.textContent||'').trim().slice(0,180),
+            hiddenConceptSteps:conceptCards.map(card=>Number(card.getAttribute('data-step'))).filter(Number.isFinite)
+          });
+          const finding=issues.at(-1);
+          if (finding?.rule==='B35-ORDER-004') Object.assign(finding,{
+            expected:'If the page teaches concepts before an example, reveal the example prompt after those concepts and before its worked answers.',
+            impact:'An early example prompt can draw attention away from the staged explanation and spoil the intended teaching sequence.',
+            suggestedAction:'Confirm the teaching order. If concept-first, give the example prompt its own later reveal step, before any answer step; keep question-first pages unchanged.',
+            confidence:'DOM visibility and bounded Example: text/author marker; pedagogical intent and screenshot appearance are not inferred.',
+            verification:['Inspect entry, prompt and first-answer states in order.','Revalidate navigation and reveal counters at the intended viewport.'],
+            constraints:['Review warning only; question-first and explicitly allowed early examples are excluded.','Do not move or hide student questions solely to silence a heuristic.']
+          });
+        }
+      }
+    }
+
     // LAYOUT-006: lettered tasks need author-defined rows, not accidental
     // soft wrapping at a particular viewport. Ignore algebra and references.
     if(settings.questionPartsEnabled!==false){

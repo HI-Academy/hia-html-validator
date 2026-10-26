@@ -22,6 +22,12 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    const stagedExample='<div class="qcard" data-step="1" style="visibility:hidden">Concept A</div><div class="qcard" data-step="2" style="visibility:hidden">Concept B</div><div class="note">Example: which shapes are symmetrical?</div>';
+    await check('early example beside hidden concepts warns',wrap(stagedExample),items=>{const f=items.find(x=>x.rule==='B35-ORDER-004');assert.equal(f.evidence.kind,'example-before-concept-reveal');assert.deepEqual(f.evidence.hiddenConceptSteps,[1,2]);assert.equal(f.severity,'warning');});
+    await check('staged example prompt passes',wrap(stagedExample.replace('<div class="note">','<div class="note" data-step="3" style="visibility:hidden">')),none('B35-ORDER-004'));
+    await check('question-first entry is allowed',wrap(stagedExample).replace('Visual review regressions','Try It First'),none('B35-ORDER-004'));
+    await check('explicit intentional early example is allowed',wrap(stagedExample).replace('class="slide active"','class="slide active" data-b35-allow-early-example'),none('B35-ORDER-004'));
+    await check('single delayed concept is too ambiguous',wrap(stagedExample.replace('<div class="qcard" data-step="2" style="visibility:hidden">Concept B</div>','')),none('B35-ORDER-004'));
     await check('inline question subparts warn',wrap('<p class="prompt">Find (a) the area, (b) the perimeter, (c) the ratio.</p>'),xs=>{const f=xs.find(x=>x.rule==='B35-LAYOUT-006');assert.deepEqual(f.evidence.labelsWithoutOwnLine,['a','b','c']);assert.ok(f.suggestedAction&&f.verification&&f.constraints);});
     await check('explicit BR before every part passes',wrap('<p class="prompt">Find:<br>(a) the area<br>(b) the perimeter</p>'),none('B35-LAYOUT-006'));
     await check('stem still needs a break before first task',wrap('<p class="prompt">Find (a) the area<br>(b) the perimeter</p>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-LAYOUT-006').evidence.labelsWithoutOwnLine,['a']));
