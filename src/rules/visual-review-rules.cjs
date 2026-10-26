@@ -89,6 +89,53 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // ORDER-004: Compare reveal beats with the rendered reading order of
+    // distinct content boxes. A later box must not appear before an earlier
+    // one. Geometry is necessary: DOM order alone can differ from CSS layout.
+    if (settings.boxReadingOrderEnabled !== false) {
+      const selector=settings.boxReadingOrderSelectors || '.qcard,.concept-card,.note,.box,.ss,.tcard,.card,.prompt,.practice-question,[data-b35-content-panel],[data-b35-reveal-order-card]';
+      let nodes=[];
+      try { nodes=[...slide.querySelectorAll(selector)]; } catch { nodes=[]; }
+      const candidates=nodes.filter(node=>!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order]'))
+        .filter(node=>!nodes.some(parent=>parent!==node&&parent.contains(node)))
+        .map(node=>{
+          const rect=boxFor(node);
+          let step=0;
+          for(let parent=node;parent&&parent!==slide.parentElement;parent=parent.parentElement){
+            if(parent.hasAttribute('data-step')){
+              const value=Number(parent.getAttribute('data-step'));
+              if(Number.isInteger(value)&&value>step)step=value;
+            }
+          }
+          return {node,rect,step};
+        }).filter(item=>item.rect.width>=20&&item.rect.height>=20);
+      const rowTolerance=(settings.boxReadingOrderRowTolerancePx??18)*scale;
+      candidates.sort((a,b)=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance
+        ? a.rect.left-b.rect.left : a.rect.top-b.rect.top);
+      const currentBeat=Math.max(0,...[...slide.querySelectorAll('[data-step]')]
+        .filter(visible).map(node=>Number(node.getAttribute('data-step'))).filter(Number.isFinite));
+      const seen=[];
+      for(const later of candidates){
+        const earlier=seen.find(item=>item.step>later.step&&!visible(item.node));
+        if(earlier&&visible(later.node)&&later.step===currentBeat){
+          review('B35-ORDER-004','A later content box is revealed before an earlier box in visual reading order.',later.node,{
+            kind:'box-reading-order',earlier:{selector:pathFor(earlier.node),step:earlier.step,top:Math.round(earlier.rect.top),left:Math.round(earlier.rect.left)},
+            later:{selector:pathFor(later.node),step:later.step,top:Math.round(later.rect.top),left:Math.round(later.rect.left)}
+          });
+          const finding=issues.at(-1);
+          if(finding?.rule==='B35-ORDER-004')Object.assign(finding,{
+            expected:'Content boxes reveal from top to bottom, and from left to right within the same row.',
+            impact:'A later box can appear before the preceding explanation or task.',
+            suggestedAction:'Adjust the reveal steps to follow the visual reading order, or mark a genuinely independent panel data-b35-order-independent.',
+            confidence:'Rendered box positions and declared data-step ancestry; semantic teaching dependencies are not inferred.',
+            verification:['Inspect the first appearance of each box at the target viewport.','Recheck after layout or reveal changes.'],
+            constraints:['Review warning; static boxes have step 0.','Nested boxes are compared through their outer box.']
+          });
+        }
+        seen.push(later);
+      }
+    }
+
     // LAYOUT-006: lettered tasks need author-defined rows, not accidental
     // soft wrapping at a particular viewport. Ignore algebra and references.
     if(settings.questionPartsEnabled!==false){
