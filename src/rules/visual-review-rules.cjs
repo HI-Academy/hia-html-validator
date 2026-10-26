@@ -89,31 +89,50 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
-    // ORDER-004: An example prompt can be deliberately held until concept
-    // cards have been revealed. A visible prompt beside multiple still-hidden
-    // concept cards is reviewable, not proof of an error: question-first pages
-    // intentionally present their prompt at entry.
-    if (settings.conceptBeforeExampleEnabled !== false
-      && !slide.matches('[data-b35-question-first],[data-b35-allow-early-example]')
-      && !/\b(?:try first|try it first|question first|practice|challenge)\b/i.test(slide.querySelector(config.selectors.header)?.textContent || '')) {
-      const conceptCards = [...slide.querySelectorAll('.qcard[data-step],.concept-card[data-step],[data-b35-concept][data-step]')];
-      if (conceptCards.length >= 2 && conceptCards.every(card => !visible(card))) {
-        for (const prompt of slide.querySelectorAll('[data-b35-example-prompt],.note')) {
-          if (!visible(prompt) || (!prompt.matches('[data-b35-example-prompt]') && !/^\s*example\s*:/i.test(prompt.textContent || ''))) continue;
-          review('B35-ORDER-004','Example prompt is visible while the preceding concept cards are still hidden.',prompt,{
-            kind:'example-before-concept-reveal',prompt:(prompt.textContent||'').trim().slice(0,180),
-            hiddenConceptSteps:conceptCards.map(card=>Number(card.getAttribute('data-step'))).filter(Number.isFinite)
+    // ORDER-004: Compare reveal beats with the rendered reading order of
+    // distinct content boxes. A later box must not appear before an earlier
+    // one. Geometry is necessary: DOM order alone can differ from CSS layout.
+    if (settings.boxReadingOrderEnabled !== false) {
+      const selector=settings.boxReadingOrderSelectors || '.qcard,.concept-card,.note,.box,.ss,.tcard,.card,.prompt,.practice-question,[data-b35-content-panel],[data-b35-reveal-order-card]';
+      let nodes=[];
+      try { nodes=[...slide.querySelectorAll(selector)]; } catch { nodes=[]; }
+      const candidates=nodes.filter(node=>!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order]'))
+        .filter(node=>!nodes.some(parent=>parent!==node&&parent.contains(node)))
+        .map(node=>{
+          const rect=boxFor(node);
+          let step=0;
+          for(let parent=node;parent&&parent!==slide.parentElement;parent=parent.parentElement){
+            if(parent.hasAttribute('data-step')){
+              const value=Number(parent.getAttribute('data-step'));
+              if(Number.isInteger(value)&&value>step)step=value;
+            }
+          }
+          return {node,rect,step};
+        }).filter(item=>item.rect.width>=20&&item.rect.height>=20);
+      const rowTolerance=(settings.boxReadingOrderRowTolerancePx??18)*scale;
+      candidates.sort((a,b)=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance
+        ? a.rect.left-b.rect.left : a.rect.top-b.rect.top);
+      const currentBeat=Math.max(0,...[...slide.querySelectorAll('[data-step]')]
+        .filter(visible).map(node=>Number(node.getAttribute('data-step'))).filter(Number.isFinite));
+      const seen=[];
+      for(const later of candidates){
+        const earlier=seen.find(item=>item.step>later.step&&!visible(item.node));
+        if(earlier&&visible(later.node)&&later.step===currentBeat){
+          review('B35-ORDER-004','A later content box is revealed before an earlier box in visual reading order.',later.node,{
+            kind:'box-reading-order',earlier:{selector:pathFor(earlier.node),step:earlier.step,top:Math.round(earlier.rect.top),left:Math.round(earlier.rect.left)},
+            later:{selector:pathFor(later.node),step:later.step,top:Math.round(later.rect.top),left:Math.round(later.rect.left)}
           });
           const finding=issues.at(-1);
-          if (finding?.rule==='B35-ORDER-004') Object.assign(finding,{
-            expected:'If the page teaches concepts before an example, reveal the example prompt after those concepts and before its worked answers.',
-            impact:'An early example prompt can draw attention away from the staged explanation and spoil the intended teaching sequence.',
-            suggestedAction:'Confirm the teaching order. If concept-first, give the example prompt its own later reveal step, before any answer step; keep question-first pages unchanged.',
-            confidence:'DOM visibility and bounded Example: text/author marker; pedagogical intent and screenshot appearance are not inferred.',
-            verification:['Inspect entry, prompt and first-answer states in order.','Revalidate navigation and reveal counters at the intended viewport.'],
-            constraints:['Review warning only; question-first and explicitly allowed early examples are excluded.','Do not move or hide student questions solely to silence a heuristic.']
+          if(finding?.rule==='B35-ORDER-004')Object.assign(finding,{
+            expected:'Content boxes reveal from top to bottom, and from left to right within the same row.',
+            impact:'A later box can appear before the preceding explanation or task.',
+            suggestedAction:'Adjust the reveal steps to follow the visual reading order, or mark a genuinely independent panel data-b35-order-independent.',
+            confidence:'Rendered box positions and declared data-step ancestry; semantic teaching dependencies are not inferred.',
+            verification:['Inspect the first appearance of each box at the target viewport.','Recheck after layout or reveal changes.'],
+            constraints:['Review warning; static boxes have step 0.','Nested boxes are compared through their outer box.']
           });
         }
+        seen.push(later);
       }
     }
 

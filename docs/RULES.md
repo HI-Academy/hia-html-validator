@@ -338,7 +338,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-ORDER-001` | No answer element is visible at the initial reveal | Automated |
 | `B35-ORDER-002` | Identified question/answer pairs need a distinct question-only state, including shared revealing parents | Automated bounded structure/visibility check |
 | `B35-ORDER-003` | Previously hidden answers must reset on available previous-page navigation, without a visible fade-out | DOM visibility check; explicit coverage limits |
-| `B35-ORDER-004` | Review an example prompt visible while multiple concept cards are still hidden | Rendered sequencing review warning |
+| `B35-ORDER-004` | Content boxes reveal in visual reading order: top to bottom, then left to right within a row | Rendered sequencing review warning |
 | `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
 | `B35-MATH-001` | No legacy `.frac` remains after runtime transformation | Automated |
@@ -632,11 +632,11 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
-## Concept before example — B35-ORDER-004
+## Visual box reading order — B35-ORDER-004
 
-When a lesson page has at least two staged concept cards (`.qcard[data-step]`, `.concept-card[data-step]`, or `[data-b35-concept][data-step]`) and all are still hidden, a visible `.note` beginning with `Example:` or an explicit `[data-b35-example-prompt]` receives a review warning. This catches a prompt that appears at page entry before a concept-first explanation. It does not classify a visible student question as an answer or claim to know the teacher's intent.
+The rendered lesson compares content boxes by position, top to bottom and left to right within a row. A static box has reveal step 0; a box inside one or more `data-step` containers takes the latest ancestor step. If a visually later box appears while an earlier box is still hidden, the validator emits a review warning at the later box's first appearance, with both box positions and steps. This applies to questions, notes, examples, explanations and other content boxes without relying on their wording. Nested boxes are compared through their outer box.
 
-The check runs in the rendered lesson and reports the prompt and hidden concept steps. It excludes headers labelled “Try First”, “Try It First”, “Question First”, “Practice” or “Challenge”, as well as pages marked `data-b35-question-first` or `data-b35-allow-early-example`. The warning is enabled by `visualReview.conceptBeforeExampleEnabled`. To repair a genuine concept-first page, reveal the prompt after the concept cards and before the first worked answer; inspect those states and the counter. An early prompt may be intentional, so do not hide it merely to silence the heuristic.
+The rule is enabled by `visualReview.boxReadingOrderEnabled`; `boxReadingOrderRowTolerancePx` controls how close two top edges must be to count as one row. For genuinely independent parallel panels, use `data-b35-order-independent` on their shared container. Inspect the actual reveal states before using this exemption. A CSS layout change can alter reading order, so validate at the intended viewport.
 
 ## Lettered question parts — B35-LAYOUT-006
 
