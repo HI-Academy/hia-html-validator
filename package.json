@@ -3,7 +3,7 @@
   "version": "1.6.1",
   "private": true,
   "description": "Command-line rendered HTML, SVG and maths checks, with full B35 lesson-deck validation",
-  "repository": { "type": "git", "url": "git+https://github.com/DannyDOK/hia-html-validator.git" },
+  "repository": { "type": "git", "url": "git+https://github.com/HI-Academy/hia-html-validator.git" },
   "bin": { "hia-html-validator": "bin/hia-html-validator.cjs", "html-validate-b35": "bin/hia-html-validator.cjs", "b35-validate": "bin/hia-html-validator.cjs" },
   "engines": { "node": ">=20" },
   "files": ["bin/", "src/", "config/", "templates/", "docs/", "tests/", "scripts/", "README.md", "AGENTS.md", "html-cli.cjs", "validate-b35.cjs"],

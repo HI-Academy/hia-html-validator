@@ -11,7 +11,7 @@ For a human-led installation, follow this README. For an LLM-led installation, a
 With Node.js 20+, npm and Git available, install and run from the cloned source:
 
 ```bash
-git clone https://github.com/DannyDOK/hia-html-validator.git
+git clone https://github.com/HI-Academy/hia-html-validator.git
 cd hia-html-validator
 npm ci
 node bin/hia-html-validator.cjs setup
