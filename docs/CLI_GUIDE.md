@@ -24,7 +24,7 @@ To retain that PATH in future terminals, add the export yourself to the startup 
 Already using a suitable npm global prefix? The package tarball alone can be installed with:
 
 ```bash
-npm install -g ./hia-html-validator-1.6.1.tgz
+npm install -g ./hia-html-validator-1.7.0.tgz
 hia-html-validator setup
 hia-html-validator doctor
 ```
@@ -44,6 +44,25 @@ hia-html-validator "/path/to/lesson.html" --out "./results/ch08"
 ```
 
 Open `report.md` for the findings, `report.json` for LLM/tool processing, and `visual-review.html` for screenshots. `run.json` records version/profile/exit status; `resolved-config.json` records effective thresholds and switches.
+
+Every primary-CLI run also writes `checks.jsonl`, `change-review.json` and
+`change-review.md`, and preserves its evidence in a uniquely named archive under
+`.hia-html-validator/` in the working directory. `validation-log.jsonl` includes
+successful checks, failed runs, source preflights and incomplete runs. Document
+versions and content/configuration/implementation/evidence fingerprints support
+comparisons with the last successful browser run. Reviews remain separate
+assertions; successful validation never grants visual acceptance.
+
+```bash
+hia-html-validator lesson.html --history ./validation-history --log ./audit/checks.jsonl
+hia-html-validator lesson.html --no-history
+hia-html-validator record-review ./validation-history/runs/RUN_ID --review ./review-decision.json
+```
+
+Copy a run's `change-review.json` outside the archive and fill its review fields
+before using `record-review`. See [history and review](HISTORY.md) for the schema,
+fingerprint scope, version semantics, retention and failure handling. Use the
+same history root to compare runs from different output directories.
 
 Use quotes around paths containing spaces. These examples are shell commands, not commands to paste into an HTML file.
 

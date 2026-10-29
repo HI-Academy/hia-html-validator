@@ -14,6 +14,11 @@ Tests use trusted, synthetic fixtures and launch Chromium. They require the pack
 
 Focused suites are available as `npm run test:cli`, `test:svg`, `test:styles`, `test:models`, `test:visual-review`, `test:page-pairs`, `test:complementary`, `test:reusability`, and `test:structure`. All are included in `npm test`. Tests return a nonzero status on failure.
 
+`npm run test:history` exercises fingerprints, version/baseline comparisons,
+append-only records, review assertions, crash handling and path protection with
+synthetic runner outcomes. It needs no browser. Actual browser/history
+integration is covered by `test:cli`. Both suites are included in `npm test`.
+
 For a new check, implement its browser audit under `src/rules/` (or source audit in the relevant runner), wire it into the correct profile, add configurable defaults under `config/`, and add positive, negative and intentional-exception regression cases. Preserve LLM-actionable location, observed/expected evidence, proposed action, verification and limitations. Do not clear warnings by weakening existing assertions.
 
 ## Package verification

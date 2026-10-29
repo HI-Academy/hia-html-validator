@@ -1,4 +1,34 @@
-# Refactor verification — 1.6.1
+# Verification
+
+## 1.7.0 — Validation history (29 October 2026)
+
+Checked in the Linux development environment with Node.js 24.19.0, npm 11.9.0
+and the package's pinned Playwright 1.62.1:
+
+- All 16 browser-independent history/orchestration cases pass, including
+  successful runner outcomes, exact version tracking, previous-success baselines,
+  source-only and incomplete outcomes, crash/stale-report handling, batch logs,
+  review identity/evidence binding, tampered evidence, failed writes and input
+  path protection. Completed-browser outcomes are simulated in this suite;
+  these are not rendered-validation results.
+- All nine structure/syntax/documentation/metadata cases pass.
+- The versioned installer ZIP and npm tarball build successfully, include the
+  history module/tests/guide, and pass checksum verification.
+- A fresh temporary-prefix installation from the built local tarball passes
+  real source-preflight validation, history and check-log creation, review-draft
+  creation, input preservation, and installed history/structure test suites.
+- `npm test` and `npm run test:package` were attempted. Browser stages are blocked
+  by the missing matching Chromium. The installed system Chromium rejects local
+  HTML navigation by administrator policy. The approved matching-browser setup
+  redirects from `cdn.playwright.dev` to `storage.googleapis.com`, which the
+  environment's network allowlist currently blocks. No browser pass is claimed.
+
+No rule implementation or thresholds changed. No real lesson, remote file,
+global package prefix or shell startup file was modified. Browser regression and
+fresh-install rendered checks must still be run after matching Chromium is
+available. Nothing was published to npm or GitHub.
+
+## 1.6.1 — Refactor verification
 
 Verified locally on macOS with Node.js 24.19.0, npm 12.2.0 and pinned Playwright 1.62.1. A matching Chromium cache was already available. No system software, shell startup files or real global package prefix was changed.
 

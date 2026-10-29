@@ -1,6 +1,6 @@
 {
   "name": "hia-html-validator",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "private": true,
   "description": "Command-line rendered HTML, SVG and maths checks, with full B35 lesson-deck validation",
   "repository": { "type": "git", "url": "git+https://github.com/HI-Academy/hia-html-validator.git" },
@@ -20,6 +20,7 @@
     "test:reusability": "node tests/test-reusability.cjs",
     "test:answers": "node tests/test-answer-sequence.cjs",
     "test:cli": "node tests/test-cli.cjs",
+    "test:history": "node tests/test-history.cjs",
     "test:structure": "node tests/test-structure.cjs",
     "test:package": "node tests/test-package.cjs",
     "package": "node scripts/package.cjs"

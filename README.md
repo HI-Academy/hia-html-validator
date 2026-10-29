@@ -72,7 +72,7 @@ export PATH="/absolute/path/to/validator-prefix/bin:$PATH"
 If only the npm tarball was supplied, install it without the wrapper:
 
 ```bash
-npm install --global --prefix "$HOME/.local" ./hia-html-validator-1.6.1.tgz
+npm install --global --prefix "$HOME/.local" ./hia-html-validator-1.7.0.tgz
 export PATH="$HOME/.local/bin:$PATH"
 hia-html-validator setup
 hia-html-validator doctor
@@ -132,6 +132,17 @@ General mode does **not** traverse arbitrary interactive/hidden slides, iframes 
 - `visual-review.html` and `screenshots/`: rendered evidence when capture is enabled.
 - `run.json`: package version, selected profile and exit status.
 - `resolved-config.json`: effective settings used for this run.
+- `checks.jsonl`: overall check outcome (including passes) and actual findings.
+- `change-review.json` and `change-review.md`: version-bound review draft and
+  comparison with the previous successful browser validation.
+
+Runs are automatically logged and archived under `.hia-html-validator/` in the
+working directory, including reports and screenshots. Unchanged HTML retains its
+document version; changed HTML receives a new version. Use `--history DIRECTORY`
+to share a history location across runs, `--log FILE.jsonl` for an additional
+append-only check log, or `--no-history` to omit persistent history. Separately
+recorded reviews remain tied to the exact run and evidence. See
+[validation history and change review](docs/HISTORY.md) for the workflow and limits.
 
 Exit code **0** means no automated errors, not visual acceptance. **1** means findings (also warnings when `--fail-on-warning` is used). **2** means invalid/incomplete validation and must not be accepted as a pass.
 

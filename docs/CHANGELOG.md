@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.7.0 — Validation history and change review
+
+- Automatically archive unique runs and append successful validations, failures,
+  incomplete execution and source-only preflights to a local history log.
+- Track document versions, run IDs, UTC timestamps, package/check versions and
+  exact input/configuration/validator/evidence fingerprints.
+- Generate change-review records against the last successful browser run per
+  input/profile; record separate evidence-bound AI/human review assertions.
+- Add `--history`, `--no-history`, `--log` and `record-review`; preserve existing
+  validation rules, diagnostic evidence and exit-code meanings.
+- Stage fresh output per run so a crashed runner cannot reuse an earlier pass or
+  archived screenshot; flag input changes during execution as incomplete.
+- Add history, review, failure and input-protection regressions and documentation.
+
 ## 1.6.1 — Project structure
 
 - Separate CLI, orchestration helpers, profile runners and browser rules under src/.

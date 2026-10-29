@@ -16,7 +16,7 @@ Read README.md and docs/CLI_GUIDE.md completely before installing or running the
 
 ## Identify which distribution is present
 
-1. `install.sh` beside `hia-html-validator-1.6.1.tgz`: installer bundle.
+1. `install.sh` beside `hia-html-validator-1.7.0.tgz`: installer bundle.
 2. A tarball alone: install that exact local file using npm.
 3. `package.json` beside `bin/`: package/source tree; use local npm installation and `node bin/hia-html-validator.cjs`.
 4. An installed command: check `--version` and `doctor`; avoid unnecessary reinstallation.
@@ -32,7 +32,7 @@ Do not assume the archive, dependencies or command are in the current working di
    Its default is `$HOME/.local`; `--prefix` supports a different approved location.
 4. Make a PATH change for this process/session only, or invoke the absolute executable path. Do not persist it in startup files without permission.
 5. For a tarball-only installation:
-   `npm install --global --prefix "$HOME/.local" "/absolute/path/to/hia-html-validator-1.6.1.tgz"`
+   `npm install --global --prefix "$HOME/.local" "/absolute/path/to/hia-html-validator-1.7.0.tgz"`
    Then invoke `"$HOME/.local/bin/hia-html-validator" setup`.
 6. For a source/package tree, run `npm install` there, then `node bin/hia-html-validator.cjs setup`; a global installation is unnecessary.
 7. Check `--version` and `doctor`. Then run an actual browser validation on an authorised trusted input; doctor alone is not a successful launch test.
@@ -52,6 +52,16 @@ Use the integrity file when supplied to check the tarball for accidental corrupt
 7. Use `--offline` when the user requires it, and report missing assets/fallback-font limits. If trust is unresolved, offline is not sufficient containment.
 8. Record the exit status. Inspect the fresh report's timestamp/input/profile, `browser.status`, coverage and counts, not just a previous report or a terminal success message.
 9. For batches, read each result in `batch-summary.json`. A batch can contain both successful and incomplete files.
+
+Primary-CLI runs automatically preserve reports and screenshots under
+`.hia-html-validator/` in the working directory. Read `run.json`, `checks.jsonl`
+and `change-review.json`; use the same `--history` root to retain comparisons.
+See [docs/HISTORY.md](docs/HISTORY.md). History includes successful validations,
+but `CHECKS_PASSED` is not manual approval, and `PREFLIGHT_PASSED` supplies no
+browser assurance. Never fabricate review identities, decisions or evidence.
+When explicitly asked to record a review, copy the run's draft outside the
+archive, fill actual observations and use `record-review`; preserve archived
+evidence and prior assertions. The legacy lesson command also records history.
 
 Exit interpretation:
 
