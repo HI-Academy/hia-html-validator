@@ -75,6 +75,9 @@ async function main() {
     const proseMath = '<p style="font-family:Arial;font-weight:900">How many sixths equal <math style="font-family:Georgia;font-weight:400"><mfrac><mn>1</mn><mn>2</mn></mfrac></math> in this model?</p>';
     await check("inline maths in question prose uses a separate family", wrap(proseMath), "B35-MATH-006", false);
     await check("inline maths in question prose uses a separate weight", wrap(proseMath), "B35-MATH-016", false);
+    await check("short prose cue beside maths uses a separate weight", wrap('<div class="work" style="font-family:Arial;font-weight:800">For (d): <math style="font-family:Georgia;font-weight:400"><mfrac><mn>3</mn><mn>7</mn></mfrac></math></div>'), "B35-MATH-016", false, "within-formula-weight");
+    await check("short prose cue beside maths uses a separate family", wrap('<div class="work" style="font-family:Arial;font-weight:800">For (d): <math style="font-family:Georgia;font-weight:400"><mfrac><mn>3</mn><mn>7</mn></mfrac></math></div>'), "B35-MATH-006", false, "within-formula-family");
+    await check("peer rows compare maths after prose cues", wrap('<div data-b35-formula-set><div class="work" style="font-family:Arial">For (a): <math style="font-family:Georgia"><mn>3</mn></math></div><div class="work"><math style="font-family:Georgia"><mn>7</mn></math></div></div>'), "B35-MATH-006", false, "peer-formula-family");
     await check("two differently styled maths tokens in prose still warn", wrap('<p>Compare these two fractions: <math style="font-family:Georgia"><mn>1</mn></math> and <math style="font-family:Arial"><mn>2</mn></math>.</p>'), "B35-MATH-006", true);
     await check("one short equation still checks prose against maths", wrap('<math style="font-family:Georgia"><mn>1</mn></math> = 2'), "B35-MATH-006", true);
     await check("size change within MathML equation warns", wrap('<math><mi style="font-size:8px">x</mi><mo>=</mo><mn>1</mn></math>'), "B35-MATH-007", true);

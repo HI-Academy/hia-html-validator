@@ -180,7 +180,9 @@ function auditFormulaStyles(config) {
       // against the deliberately different STIX maths role.
       const proseWords = values.filter(value => !value.semantic)
         .flatMap(value => value.text.match(/[A-Za-z]{2,}/g) || []);
-      const inlineProse = proseWords.length >= 3 && values.some(value => value.semantic);
+      // Even a short cue such as “For (d):” is prose, not a base token of
+      // the adjacent MathML expression. Compare the maths tokens together.
+      const inlineProse = proseWords.length >= 1 && values.some(value => value.semantic);
       const equationValues = inlineProse ? typographyValues.filter(value => value.semantic) : typographyValues;
       if (!root.closest("[data-b35-allow-formula-style]")) {
         const fontNodes = equationValues.flatMap((value) => value.node.localName === "math"
@@ -377,7 +379,10 @@ function auditFormulaStyles(config) {
       if (!visible(group) || group.closest("[data-b35-allow-formula-style]")) continue;
       const peers = [...contexts].filter((node) => !node.closest("[data-b35-allow-formula-style]") && group.contains(node) && node.closest(settings.peerSelectors || ".steps-col,.practice-answers,[data-b35-formula-set]") === group);
       const measurements = peers.map((node) => {
-        const first = atoms(node).find((value) => value.semantic || /[\d=+−×÷%％a-z]/i.test(value.text));
+        const values = atoms(node);
+        // A worked row can start with a Nunito cue and then show STIX maths.
+        // Its formula family is the maths family's, not the cue's.
+        const first = values.find((value) => value.semantic) || values.find((value) => /[\d=+−×÷%％a-z]/i.test(value.text));
         return first ? { selector: selector(node), family: family(first.node), size: fontSize(first.node) } : null;
       }).filter(Boolean);
       if (measurements.length < 2) continue;
