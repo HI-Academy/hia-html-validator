@@ -12,6 +12,7 @@ const { auditVisualReview } = require("../rules/visual-review-rules.cjs");
 const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs");
 const { auditTextContrast } = require("../rules/text-contrast-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
+const { captureLayoutState, auditLayoutStability } = require("../rules/layout-stability-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
 const { captureAnswerSequence, observeAnswerSequence, auditAnswerReentry } = require("../rules/answer-sequence-rules.cjs");
 const { configuration } = require("../core/cli-support.cjs");
@@ -475,6 +476,7 @@ async function runBrowserAudit(context) {
   const pageErrors = [];
   const failedRequests = [];
   const pagePairStates = [];
+  const layoutStates = [];
   const reusabilityFindingKeys = new Set();
   const answerFindingKeys = new Set(), questionHistory = new Set(), answerBaselines = new Map();
   const screenshotDir = path.join(context.out, "screenshots");
@@ -528,6 +530,7 @@ async function runBrowserAudit(context) {
       previousKey = stateKey;
       result.issues.forEach((item) => findings.push({ ...item, state: `${meta.step}/${meta.maxStep}` }));
       states.push(meta);
+      if(context.config.layoutStability?.enabled!==false)layoutStates.push(await page.evaluate(captureLayoutState,{config:context.config,metadata:meta}));
       if (meta.step === 0 && context.config.pagePairs?.enabled !== false) {
         pagePairStates.push(await page.evaluate(capturePagePairState, { config:context.config, metadata:meta }));
       }
@@ -599,12 +602,13 @@ async function runBrowserAudit(context) {
     const answerReentry = await auditAnswerReentry(page, context.config, answerBaselines);
     findings.push(...answerReentry.findings);
     findings.push(...auditPagePairs(pagePairStates, context.config));
+    findings.push(...auditLayoutStability(layoutStates,context.config));
     pageErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Page exception: ${message}`)));
     consoleErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Console error: ${message}`)));
     failedRequests.forEach((request) => findings.push(finding("B35-RUNTIME-002", context.config.policy.externalRequestFailureSeverity, `Resource failed to load: ${request.url}`, { evidence: request })));
-    return { blocked: false, findings, states, screenshots, pagePairStates, answerSequenceCoverage: answerReentry.coverage, runtime: states.at(-1)?.runtimeSlides || null, consoleErrors, pageErrors, failedRequests };
+    return { blocked: false, findings, states, screenshots, pagePairStates, layoutStates, answerSequenceCoverage: answerReentry.coverage, runtime: states.at(-1)?.runtimeSlides || null, consoleErrors, pageErrors, failedRequests };
   } catch (error) {
-    return { blocked: true, reason: error.message, findings, states, screenshots, pagePairStates, consoleErrors, pageErrors, failedRequests };
+    return { blocked: true, reason: error.message, findings, states, screenshots, pagePairStates, layoutStates, consoleErrors, pageErrors, failedRequests };
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
@@ -770,6 +774,7 @@ async function main() {
     findings,
     states: browser.states,
     pagePairStates: browser.pagePairStates || [],
+    layoutStates: browser.layoutStates || [],
     answerSequenceCoverage: browser.answerSequenceCoverage || { enabled: false, stopReason: "Browser re-entry audit not run." },
     screenshots: browser.screenshots,
     manualGates: MANUAL_GATES.map(([id, label]) => ({ id, label, status: "not reviewed" }))

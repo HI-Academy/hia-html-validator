@@ -356,6 +356,9 @@ edit inputs or fabricate reviewer approvals.
 | `B35-MATH-013` | Ink from adjacent br-separated equation lines collides or has insufficient clearance | Error for collisions; warning for tight spacing |
 | `B35-MATH-014` | Fraction numeric glyph boxes are too small, disproportionate to surrounding digits, or inconsistent with peer fractions | Review warning |
 | `B35-MATH-022` | Inline radicals have excessive vertical wrapper padding relative to their surrounding prose | Review warning |
+| `B35-LAYOUT-007` | Teaching columns or working stack do not start at the shared top anchor | Review warning |
+| `B35-LAYOUT-008` | Question/working frames move or resize between settled reveal states | Review warning |
+| `B35-LAYOUT-009` | Same-family pages use inconsistent teaching frame positions or dimensions | Review warning |
 | `B35-MATH-015` | A formula soft-wraps across rendered lines without explicit equation-row boundaries | Review warning |
 | `B35-MATH-016` | Comparable equation base tokens mix regular and bold weights, including MathML radicals/fractions and SVG text | Review warning |
 | `B35-MATH-017` | A standalone teaching equation is consistently too small, even if its left/right font sizes match | Configurable readability warning |
@@ -731,3 +734,17 @@ Run its focused regressions with:
 ```bash
 npm run test:page-pairs -- --lesson /absolute/path/to/Y8_Ch07_Percentages.html
 ```
+
+## Stable teaching frames — B35-LAYOUT-007/008/009
+
+Lesson-mode browser traversal captures unscaled frame geometry at every settled reveal in `layoutStates`. Recognized roles are grouped separately: worked examples (task/working), concept diagrams (concept/diagram), concept details (concept/card), paired practice (questions/answers), and uniform comparison, summary or route-map groups with two to four columns. Column count and role signatures remain distinct. Cover/closing pages and unrecognized layouts are outside automatic coverage. General HTML mode and source-only validation do not certify cross-page or reveal stability.
+
+- `007` checks the columns' top anchor and the working stack's first laid-out child. Content-dependent vertical centring leaves an offset and warns.
+- `008` compares each page's question/working frame positions, widths and heights with its first observed reveal. Reserve the final working area with layout-preserving hiding instead of letting new answers resize the frame. Individual step cards may be different heights; the check compares their containing frame.
+- `009` compares initial frames across pages of the same inferred/declared family. It reports dimensional ranges and every related page; the first page is not assumed to be an approved reference. Different page types are not forced into identical frames.
+
+`layoutStability` configures `enabled`, `groupSelectors`, and `tolerancePx` (default **8 design pixels**). `policy.layoutStabilitySeverity` defaults to `warning`. A non-empty `data-b35-layout-family` on the slide or group identifies an intended template variant; the column role signature remains part of its comparison key. A specific `data-b35-layout-variation="reason"` excludes that page/group from cross-page frame comparison only. It does not exempt top alignment, reveal shifts, bounds or content fit. A whitespace approval cannot suppress these checks.
+
+Repair the shared template rather than adjusting each page to its current amount of text. Use a different documented frame variant if a longer question genuinely requires more room; do not shrink type, clip content or remove working to force equal heights. DOM geometry is not visual acceptance. Inspect normal-size initial/final screenshots after repair.
+
+Focused regressions: `node tests/test-layout-stability.cjs` (also included in `npm test`).

@@ -195,6 +195,11 @@
     "panelSelectors": ".visual-card,.formula-panel,.card,.summary-card,[data-b35-composition-panel]",
     "columnSelectors": ".two,.concept-board,.practice-grid,.paired-practice,[data-b35-composition-columns]"
   },
+  "layoutStability": {
+    "enabled": true,
+    "tolerancePx": 8,
+    "groupSelectors": ".two,.three,.four,.concept-board,.practice-grid,.paired-practice,[data-b35-layout-columns]"
+  },
   "capture": {
     "mode": "review",
     "quality": 76,
@@ -230,6 +235,7 @@
     "diagramModelSeverity": "error",
     "inferredDiagramSeverity": "warning",
     "compositionSeverity": "warning",
+    "layoutStabilitySeverity": "warning",
     "svgAccessibleNameSeverity": "off",
     "visualReviewSeverity": "warning",
     "footerTypographySeverity": "warning",
