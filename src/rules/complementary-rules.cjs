@@ -375,6 +375,15 @@ function auditComplementaryChecks(config) {
     // A split glyph + CSS border is fragile even with matching font weights.
     // Declared SVG radicals expose geometry; neither check certifies optics.
     if(symbols.radicalGeometryEnabled!==false){
+      for(const node of select(slide,'math mo')){
+        if(!visible(node)||node.closest('msqrt,mroot,[data-b35-allow-radical-variation]')
+          ||!/[√∛]/.test(node.textContent)||!node.nextElementSibling)continue;
+        emit('B35-MATH-020',policy.radicalGeometrySeverity||'warning',
+          'A radical glyph is followed by operands without a semantic radical structure; the overbar may not cover the radicand.',node,
+          {kind:'radical-construction',renderer:'bare MathML glyph',visualAppearanceVerified:false},
+          {suggestedAction:'Use msqrt or mroot around the complete radicand. A bare radical glyph does not construct an overbar.',
+            verification:['Preserve the original radicand and any root index.','Inspect the hook and overbar at lesson size after fonts load.']});
+      }
       for(const node of select(slide,'.root,svg[data-b35-diagram="radical"]')){
         if(!visible(node)||node.closest('[data-b35-allow-radical-variation]'))continue;
         const split=node.matches('.root')&&!!node.querySelector('.root-mark,.radicand');

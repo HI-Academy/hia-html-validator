@@ -36,9 +36,10 @@ function auditVisualModels(config) {
   };
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  const digitHeight = (node) => {
+  const digitHeight = (node, typographyNode = node) => {
     const style = getComputedStyle(node);
-    context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const typography = getComputedStyle(typographyNode);
+    context.font = `${typography.fontStyle} ${typography.fontWeight} ${style.fontSize} ${typography.fontFamily}`;
     const metrics = context.measureText("0123456789");
     return (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) * scaleFor(node);
   };
@@ -103,11 +104,17 @@ function auditVisualModels(config) {
       const svgReference = fraction.closest("foreignObject")?.parentElement?.querySelector(":scope > text");
       const block = fraction.closest(".formula,.work,.prompt,.step-solution,.practice-answer,[data-b35-formula]") || fraction.closest("math").parentElement;
       const reference = svgReference || block;
-      const referenceHeight = digitHeight(reference);
+      // Compare script digits to base digits of the mathematical font, at the
+      // surrounding role's base size. Prose faces can have a different cap
+      // height/weight; that difference is not excessive fraction reduction.
+      // SVG reference text is actual neighbouring maths and stays authoritative.
+      const referenceTypography = svgReference || fraction.closest('math');
+      const referenceHeight = digitHeight(reference, referenceTypography);
       const minHeight = Math.min(...heights), midHeight = median(heights);
       const ratio = referenceHeight > 0 ? midHeight / referenceHeight : null;
       const sample = { fractionSelector: selector(fraction), minimumDigitBoxPx: minHeight, medianDigitBoxPx: midHeight,
-        referenceDigitInkEstimatePx: referenceHeight, relativeHeight: ratio, text: fraction.closest("math")?.getAttribute("aria-label") || fraction.textContent };
+        referenceDigitInkEstimatePx: referenceHeight, referenceFontFamily:getComputedStyle(referenceTypography).fontFamily,
+        referenceBaseSizePx:parseFloat(getComputedStyle(reference).fontSize),relativeHeight: ratio, text: fraction.closest("math")?.getAttribute("aria-label") || fraction.textContent };
       if (!fractionSamples.has(block)) fractionSamples.set(block, []);
       fractionSamples.get(block).push(sample);
     }

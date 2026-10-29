@@ -183,7 +183,11 @@ function auditFormulaStyles(config) {
       // Even a short cue such as “For (d):” is prose, not a base token of
       // the adjacent MathML expression. Compare the maths tokens together.
       const inlineProse = proseWords.length >= 1 && values.some(value => value.semantic);
-      const equationValues = inlineProse ? typographyValues.filter(value => value.semantic) : typographyValues;
+      const equationValues = inlineProse ? typographyValues.filter((value,index) => value.semantic
+        // English prose may surround an equation, but an adjoining '=' or '+'
+        // still belongs to that equation and must share its maths typography.
+        || (typographyValues[index-1]?.semantic && /^\s*[=+−×÷·-]/.test(value.text))
+        || (typographyValues[index+1]?.semantic && /[=+−×÷·-]\s*$/.test(value.text))) : typographyValues;
       if (!root.closest("[data-b35-allow-formula-style]")) {
         const fontNodes = equationValues.flatMap((value) => value.node.localName === "math"
           ? [value.node, ...value.node.querySelectorAll("mi,mn,mo,mtext")].filter(visible) : [value.node]);
@@ -380,17 +384,25 @@ function auditFormulaStyles(config) {
       const peers = [...contexts].filter((node) => !node.closest("[data-b35-allow-formula-style]") && group.contains(node) && node.closest(settings.peerSelectors || ".steps-col,.practice-answers,[data-b35-formula-set]") === group);
       const measurements = peers.map((node) => {
         const values = atoms(node);
+        if (!values.some(value=>value.semantic)
+          && (values.map(value=>value.text).join(' ').match(/[A-Za-z]{2,}/g)||[]).length>=3) return null;
         // A worked row can start with a Nunito cue and then show STIX maths.
         // Its formula family is the maths family's, not the cue's.
         const first = values.find((value) => value.semantic) || values.find((value) => /[\d=+−×÷%％a-z]/i.test(value.text));
-        return first ? { selector: selector(node), family: family(first.node), size: fontSize(first.node) } : null;
+        return first ? { selector: selector(node), family: family(first.node), size: fontSize(first.node),
+          sizeRole: node.matches('.formula,[data-b35-content-role="display-formula"]') ? 'display-formula' : 'working' } : null;
       }).filter(Boolean);
       if (measurements.length < 2) continue;
       const families = [...new Set(measurements.map((item) => item.family))];
       if (families.length > 1) emit("B35-MATH-006", typographySeverity, "Related formula rows use different computed font families.", group, { kind: "peer-formula-family", measurements });
-      const sizes = measurements.map((item) => item.size).filter((size) => size > 0);
-      if (Math.max(...sizes) / Math.min(...sizes) > sizeRatio + 0.01) emit("B35-MATH-007", typographySeverity,
-        "Related formula rows use inconsistent base font sizes.", group, { kind: "peer-formula-size", measurements, maximumRatio: sizeRatio });
+      // A 26px property/display formula can accompany 18px working. Compare
+      // peer sizes within the same role; family consistency still spans roles.
+      for (const sizeRole of new Set(measurements.map(item=>item.sizeRole))) {
+        const peers = measurements.filter(item=>item.sizeRole===sizeRole);
+        const sizes = peers.map((item) => item.size).filter((size) => size > 0);
+        if (Math.max(...sizes) / Math.min(...sizes) > sizeRatio + 0.01) emit("B35-MATH-007", typographySeverity,
+          "Related formula rows use inconsistent base font sizes.", group, { kind: "peer-formula-size", sizeRole, measurements:peers, maximumRatio: sizeRatio });
+      }
     }
 
     for (const fraction of slide.querySelectorAll("mfrac")) {

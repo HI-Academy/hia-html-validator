@@ -34,6 +34,15 @@ async function main() {
     }
     const has = (items, kind) => items.some((item) => item.evidence.kind === kind);
     await check("readable ordinary fraction passes", wrap(`<div class="work">${fraction} = 0.5</div>`), (items) => assert.equal(has(items, "fraction-optical-size"), false));
+    const inspectReference={...config,thresholds:{...config.thresholds,opticalFractionMinimumRelativeHeight:2}};
+    let referenceInk;
+    await check('fraction reference uses maths metrics in serif prose',wrap(`<div class="work">${fraction}</div>`,'.work{font:900 24px serif}math{font:400 24px monospace}'),items=>{
+      referenceInk=items.find(i=>i.rule==='B35-MATH-014').evidence.measurements[0].referenceDigitInkEstimatePx;
+    },inspectReference);
+    await check('prose face does not change the fraction reference',wrap(`<div class="work">${fraction}</div>`,'.work{font:900 24px sans-serif}math{font:400 24px monospace}'),items=>{
+      assert.equal(items.find(i=>i.rule==='B35-MATH-014').evidence.measurements[0].referenceDigitInkEstimatePx,referenceInk);
+    },inspectReference);
+    await check('maths much smaller than surrounding base still warns',wrap(`<div class="work">${fraction}</div>`,'.work{font-size:48px}math{font-size:24px}'),items=>assert.ok(has(items,'fraction-optical-size')));
     await check("tiny fraction numeric ink warns", wrap(`<div class="work">${fraction} = 0.5</div>`, ".work{font-size:10px}"), (items) => assert.equal(has(items, "fraction-optical-size"), true));
     await check("intentional optical exception is honoured", wrap(`<div class="work" data-b35-allow-optical-size>${fraction} = 0.5</div>`, ".work{font-size:10px}"), (items) => assert.equal(has(items, "fraction-optical-size"), false));
     await check("hidden tiny fraction is ignored", wrap(`<div class="work" style="visibility:hidden;font-size:8px">${fraction}</div>`), (items) => assert.equal(has(items, "fraction-optical-size"), false));
