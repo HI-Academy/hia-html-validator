@@ -346,7 +346,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-MATH-003` | Math and diagram typography meets configured size thresholds | Heuristic warning |
 | `B35-MATH-004` | Math ink extends beyond a visible-overflow line box; inspect collision/clipping in context | Heuristic warning |
 | `B35-MATH-005` | SVG formula tokens overlap, or a fraction bar is displaced from a neighbouring equals-sign axis | Collision error; axis warning |
-| `B35-MATH-006` | Different computed font families within a formula, between its numerator/denominator, or across related formula rows | Review warning |
+| `B35-MATH-006` | Different computed font families within a formula, including ordinary digits beside a rendered fraction, between its numerator/denominator, or across related formula rows | Review warning |
 | `B35-MATH-007` | Base formula font sizes differ beyond a configured ratio | Review warning |
 | `B35-MATH-008` | Slash, Unicode, CSS and MathML fraction styles are mixed within one formula | Review warning |
 | `B35-MATH-009` | Percentage glyphs or number-to-percent spacing vary in one formula | Review warning |
