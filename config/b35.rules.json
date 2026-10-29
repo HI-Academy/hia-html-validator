@@ -69,7 +69,7 @@
   "formulaConsistency": {
     "formulaSelectors": ".formula,.work,[data-b35-formula],[data-b35-formula-row]",
     "peerSelectors": ".steps-col,.practice-answers,[data-b35-formula-set]",
-    "labelSelectors": ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,[data-b35-formula-label]",
+    "labelSelectors": ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,.question-number,[data-b35-formula-label]",
     "automaticContextSelectors": ".mini,.note,.rule,p,li,td,th,figcaption,div",
     "teachingEquationSelectors": ".formula,.mini,[data-b35-equation],[data-b35-formula-role='teaching']",
     "teachingEquationMaximumCharacters": 120,

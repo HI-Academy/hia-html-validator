@@ -63,7 +63,7 @@ function auditFormulaStyles(config) {
       }
       if (node.nodeType !== Node.ELEMENT_NODE || !visible(node)) return;
       if (node.matches("script,style,annotation,annotation-xml,.katex-mathml")) return;
-      if (node.matches(settings.labelSelectors || ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,[data-b35-formula-label]")) return;
+      if (node.matches(settings.labelSelectors || ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,.question-number,[data-b35-formula-label]")) return;
       if (node !== root && node.matches(semantic)) { values.push({ node, text: node.textContent, semantic: true }); return; }
       // Exponents and subscripts intentionally have a smaller size. They are
       // checked as notation below, not compared to surrounding base glyphs.
@@ -163,7 +163,7 @@ function auditFormulaStyles(config) {
     // Discover semantic maths in ordinary footers/callouts, not only named
     // formula classes. Do not promote a whole card containing known formulas:
     // its heading and explanatory prose are not one equation.
-    const labels = settings.labelSelectors || ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,[data-b35-formula-label]";
+    const labels = settings.labelSelectors || ".book,.tag,.answer-tag,.challenge-title,.formula-label,.practice-num,.qnum,.question-number,[data-b35-formula-label]";
     for (const formula of slide.querySelectorAll(semantic)) {
       if (!visible(formula) || formula.closest(labels) || [...contexts].some(root => root === formula || root.contains(formula))) continue;
       const container = formula.parentElement.closest(settings.automaticContextSelectors || ".mini,.note,.rule,p,li,td,th,figcaption,div");
