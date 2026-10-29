@@ -355,6 +355,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-MATH-012` | Formula ink extends beyond an ancestor that clips or scrolls its content | Automated error |
 | `B35-MATH-013` | Ink from adjacent br-separated equation lines collides or has insufficient clearance | Error for collisions; warning for tight spacing |
 | `B35-MATH-014` | Fraction numeric glyph boxes are too small, disproportionate to surrounding digits, or inconsistent with peer fractions | Review warning |
+| `B35-MATH-022` | Inline radicals have excessive vertical wrapper padding relative to their surrounding prose | Review warning |
 | `B35-MATH-015` | A formula soft-wraps across rendered lines without explicit equation-row boundaries | Review warning |
 | `B35-MATH-016` | Comparable equation base tokens mix regular and bold weights, including MathML radicals/fractions and SVG text | Review warning |
 | `B35-MATH-017` | A standalone teaching equation is consistently too small, even if its left/right font sizes match | Configurable readability warning |
@@ -528,9 +529,15 @@ Run **all browser regression checks** with `npm test`, or only the new style che
 
 This measures numeric MathML fraction glyph boxes after browser layout. Defaults warn when a fraction digit is below **7 CSS pixels** high, its median digit height is below **60%** of the estimated surrounding digit ink height, or peer fraction digit heights differ by a factor above **1.4**. This complements the CSS base-font-size rule: two tokens with equal CSS font size can render very differently.
 
-The check allows normal structural fraction reduction; it does not require numerator digits to be the same height as whole numbers. It ignores hidden content and structural exponent/subscript digits. Measurements are browser geometry plus canvas font-metric estimates, not a pixel segmentation of the screenshot or a guarantee about classroom readability. Current coverage is numeric MathML fractions; arbitrary path-drawn or image formulas need visual review.
+Top-level numeric fraction components must also use at least **85%** of the surrounding content role's base font size (`inlineFractionMinimumBaseFontRatio`). This is a lesson typography policy, not a claim that the browser's default 70% inline fraction is malformed. Equal root CSS sizes do not satisfy it: an 18px expression with 12.6px components warns. Font-size ratios are independent of viewport scaling and do not compare different prose and math faces' cap heights. Nested fractions and exponent/subscript fractions retain their structural reduction; nested digits are not counted again as outer fraction digits.
+
+The check does not require numerator glyphs to have exactly the same ink height as whole numbers. It ignores hidden content and structural exponent/subscript digits. Measurements are browser geometry plus canvas font-metric estimates, not screenshot segmentation or visual acceptance. Current coverage is numeric MathML fractions; arbitrary path-drawn or image formulas need visual review. Symbol-stroke approval records do not suppress this independent size check.
 
 Configure the `opticalFraction...` thresholds or use `data-b35-allow-optical-size` for a documented intentional exception.
+
+### Inline radical line boxes — B35-MATH-022
+
+An inline MathML wrapper containing a radical inside recognized prose warns when its combined vertical padding exceeds **20%** of that prose's font size (`inlineRadicalMaximumVerticalPaddingRatio`). For example, 9px bottom padding beside 18px prose warns. Hidden content, explicit block-display mathematics and structural exponent/subscript mathematics are excluded. A previous symbol-stroke approval cannot clear this check. The finding diagnoses wrapper geometry; it does not prove that a native radical's hook, overbar, weight or proportions are visually acceptable. Inspect those at lesson size, and retain ink/clipping checks after changing padding.
 
 ### Fraction-bar models — B35-DIAGRAM-001
 

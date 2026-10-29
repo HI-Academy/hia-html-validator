@@ -98,7 +98,7 @@ function auditVisualModels(config) {
     const fractionSamples = new Map();
     for (const fraction of slide.querySelectorAll("mfrac")) {
       if (!visible(fraction) || fraction.closest("[data-b35-allow-optical-size]")) continue;
-      const digits = [...fraction.querySelectorAll("mn")].filter((digit) => visible(digit) && /\d/.test(digit.textContent) && !digit.closest("msup,msub,msubsup,mroot"));
+      const digits = [...fraction.querySelectorAll("mn")].filter((digit) => visible(digit) && /\d/.test(digit.textContent) && digit.closest('mfrac') === fraction && !digit.closest("msup,msub,msubsup,mroot"));
       if (!digits.length) continue;
       const heights = digits.map((digit) => digit.getBoundingClientRect().height);
       const svgReference = fraction.closest("foreignObject")?.parentElement?.querySelector(":scope > text");
@@ -112,7 +112,12 @@ function auditVisualModels(config) {
       const referenceHeight = digitHeight(reference, referenceTypography);
       const minHeight = Math.min(...heights), midHeight = median(heights);
       const ratio = referenceHeight > 0 ? midHeight / referenceHeight : null;
+      const structural = !!fraction.parentElement.closest('mfrac,msup,msub,msubsup,mroot');
+      const surroundingBasePx = parseFloat(getComputedStyle(reference).fontSize);
+      const componentBaseSizesPx = [...fraction.children].map(part => parseFloat(getComputedStyle(part).fontSize));
+      const componentBaseRatio = !structural && surroundingBasePx > 0 ? Math.min(...componentBaseSizesPx) / surroundingBasePx : null;
       const sample = { fractionSelector: selector(fraction), minimumDigitBoxPx: minHeight, medianDigitBoxPx: midHeight,
+        componentBaseSizesPx, surroundingBasePx, componentBaseRatio, structuralReduction: structural,
         referenceDigitInkEstimatePx: referenceHeight, referenceFontFamily:getComputedStyle(referenceTypography).fontFamily,
         referenceBaseSizePx:parseFloat(getComputedStyle(reference).fontSize),relativeHeight: ratio, text: fraction.closest("math")?.getAttribute("aria-label") || fraction.textContent };
       if (!fractionSamples.has(block)) fractionSamples.set(block, []);
@@ -120,13 +125,32 @@ function auditVisualModels(config) {
     }
     for (const [block, samples] of fractionSamples) {
       const tiny = samples.filter((sample) => sample.minimumDigitBoxPx < (thresholds.opticalFractionMinimumInkHeightPx ?? 7)
-        || (sample.relativeHeight !== null && sample.relativeHeight < (thresholds.opticalFractionMinimumRelativeHeight ?? 0.6)));
-      const medians = samples.map((sample) => sample.medianDigitBoxPx);
-      const fractionRatio = Math.max(...medians) / Math.min(...medians);
+        || (sample.relativeHeight !== null && sample.relativeHeight < (thresholds.opticalFractionMinimumRelativeHeight ?? 0.6))
+        || (sample.componentBaseRatio !== null && sample.componentBaseRatio < (thresholds.inlineFractionMinimumBaseFontRatio ?? 0.85) - 0.001));
+      const medians = samples.filter(sample => !sample.structuralReduction).map((sample) => sample.medianDigitBoxPx);
+      const fractionRatio = medians.length > 1 ? Math.max(...medians) / Math.min(...medians) : 1;
       if (tiny.length || fractionRatio > (thresholds.opticalFractionMaximumPeerRatio ?? 1.4)) emit("B35-MATH-014", config.policy.opticalSizeSeverity || "warning",
         `Review fraction glyph sizes: ${tiny.length} fraction(s) fall below the optical readability limits; peer-size ratio is ${fractionRatio.toFixed(2)}.`, block,
         { kind: "fraction-optical-size", measurements: samples, smallFractionCount: tiny.length, peerSizeRatio: fractionRatio,
-          minimumInkHeightPx: thresholds.opticalFractionMinimumInkHeightPx ?? 7, minimumRelativeHeight: thresholds.opticalFractionMinimumRelativeHeight ?? 0.6 });
+          minimumInkHeightPx: thresholds.opticalFractionMinimumInkHeightPx ?? 7, minimumRelativeHeight: thresholds.opticalFractionMinimumRelativeHeight ?? 0.6,
+          minimumComponentBaseRatio: thresholds.inlineFractionMinimumBaseFontRatio ?? 0.85 });
+    }
+
+    // Structural correctness/old symbol approvals cannot clear this independent
+    // inline line-box check. It flags excessive padding, not a defective glyph.
+    for (const math of slide.querySelectorAll('math')) {
+      if (!visible(math) || !math.querySelector('msqrt,mroot') || math.closest('mfrac,msup,msub,msubsup')) continue;
+      const prose = math.parentElement.closest('.prompt,.step-solution,.practice-question,.practice-answer,.hint,.note,.work,[data-b35-content-role="question"],[data-b35-content-role="explanation"]');
+      if (!prose || math.getAttribute('display') === 'block') continue;
+      const style = getComputedStyle(math),basePx=parseFloat(getComputedStyle(prose).fontSize);
+      const paddingTopPx=parseFloat(style.paddingTop)||0,paddingBottomPx=parseFloat(style.paddingBottom)||0;
+      const ratio=basePx>0?(paddingTopPx+paddingBottomPx)/basePx:0;
+      if (ratio > (thresholds.inlineRadicalMaximumVerticalPaddingRatio ?? 0.2) + 0.001)
+        emit('B35-MATH-022',config.policy.opticalSizeSeverity||'warning',
+          'Inline radical has excessive vertical wrapper padding; review its baseline and proportion beside prose.',math,
+          {kind:'inline-radical-line-box',paddingTopPx,paddingBottomPx,surroundingBasePx:basePx,paddingRatio:ratio,
+            maximumPaddingRatio:thresholds.inlineRadicalMaximumVerticalPaddingRatio??0.2,
+            visualHarmonyVerified:false,scope:'Wrapper geometry only; native radical hook/bar weight still requires screenshot review.'});
     }
 
     // B35-DIAGRAM-004: explicitly declared additions to a 100% reference.

@@ -33,7 +33,25 @@ async function main() {
       verify(findings); results.push({ name, passed: true, findings });
     }
     const has = (items, kind) => items.some((item) => item.evidence.kind === kind);
-    await check("readable ordinary fraction passes", wrap(`<div class="work">${fraction} = 0.5</div>`), (items) => assert.equal(has(items, "fraction-optical-size"), false));
+    await check("readable full-size ordinary fraction passes", wrap(`<div class="work">${fraction} = 0.5</div>`, 'math{math-style:normal}'), (items) => assert.equal(has(items, "fraction-optical-size"), false));
+    await check('compact fraction components warn even when root CSS size matches prose',wrap(`<p class="prompt">Classify ${fraction}.</p>`,'.prompt{font:900 18px Arial}math{font:400 18px serif;math-style:compact}'),items=>{
+      const issue=items.find(i=>i.rule==='B35-MATH-014');assert.ok(issue);
+      assert.ok(issue.evidence.measurements[0].componentBaseRatio<0.85,JSON.stringify(issue.evidence.measurements));
+      assert.equal(issue.evidence.minimumComponentBaseRatio,0.85);
+    });
+    await check('component ratio is independent of viewport transform',wrap(`<p class="prompt">${fraction}</p>`,'.slide{transform:scale(.5);transform-origin:top left}.prompt{font-size:48px}math{font-size:48px;math-style:compact}'),items=>{
+      assert.ok(items.find(i=>i.rule==='B35-MATH-014').evidence.measurements[0].componentBaseRatio<0.85);
+    });
+    await check('fraction inside exponent retains structural reduction',wrap('<p class="prompt"><math><msup><mi>x</mi><mfrac><mn>1</mn><mn>2</mn></mfrac></msup></math></p>'),items=>assert.equal(has(items,'fraction-optical-size'),false));
+    await check('nested fraction does not compare its script size with paragraph base',wrap('<p class="prompt"><math><mfrac><mfrac><mn>1</mn><mn>2</mn></mfrac><mn>3</mn></mfrac></math></p>','math{math-style:normal}'),items=>assert.equal(has(items,'fraction-optical-size'),false));
+    const radical='<math><msqrt><mn>2</mn></msqrt></math>';
+    const oldApproval=structuredClone(config);oldApproval.complementaryChecks={symbolRendering:{approvals:[{selector:'#fixture math',decision:'accepted',fingerprint:'old-symbol-review'}]}};
+    await check('old symbol approval cannot clear padded inline radical',wrap(`<p class="prompt">Classify ${radical}.</p>`,'.prompt{font-size:18px}math{padding-bottom:9px}'),items=>{
+      const issue=items.find(i=>i.rule==='B35-MATH-022');assert.ok(issue);assert.equal(issue.evidence.paddingRatio,0.5);assert.equal(issue.evidence.visualHarmonyVerified,false);
+    },oldApproval);
+    await check('radical without excess wrapper padding needs no line-box warning',wrap(`<p class="prompt">${radical}</p>`),items=>assert.equal(has(items,'inline-radical-line-box'),false));
+    await check('hidden padded radical waits until reveal',wrap(`<p class="prompt" style="visibility:hidden">${radical}</p>`,'math{padding:20px}'),items=>assert.equal(has(items,'inline-radical-line-box'),false));
+    await check('display radical is outside inline-prose padding contract',wrap(`<p class="prompt">${radical.replace('<math>','<math display="block">')}</p>`,'math{padding:20px}'),items=>assert.equal(has(items,'inline-radical-line-box'),false));
     const inspectReference={...config,thresholds:{...config.thresholds,opticalFractionMinimumRelativeHeight:2}};
     let referenceInk;
     await check('fraction reference uses maths metrics in serif prose',wrap(`<div class="work">${fraction}</div>`,'.work{font:900 24px serif}math{font:400 24px monospace}'),items=>{

@@ -39,6 +39,8 @@
     "formulaClippingTolerancePx": 2,
     "opticalFractionMinimumInkHeightPx": 7,
     "opticalFractionMinimumRelativeHeight": 0.6,
+    "inlineFractionMinimumBaseFontRatio": 0.85,
+    "inlineRadicalMaximumVerticalPaddingRatio": 0.2,
     "opticalFractionMaximumPeerRatio": 1.4,
     "diagramGeometryTolerancePx": 2,
     "diagramFractionRatioTolerance": 0.02,
