@@ -115,7 +115,8 @@ function auditComplementaryChecks(config) {
           if(node.closest('msup > :not(:first-child),msub > :not(:first-child),msubsup > :not(:first-child),mroot > :not(:first-child)'))continue;
           const text=[...node.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join(' ').trim();
           if(!text)continue;
-          const mathematical=!!node.closest(maths);
+          const mathematical=!!node.closest(maths)||(owner.matches('.wide-answer')&&!isProse(text)
+            &&/^[\dA-Za-z\s()+\-−×÷=·^.,]+$/.test(text)&&/[+\-−×÷=^]/.test(text));
           if(role.kind==='math'?!mathematical:mathematical||!isProse(text))continue;
           if(handledRoles.get(node)?.has(role.name))continue;
           if(!handledRoles.has(node))handledRoles.set(node,new Set());handledRoles.get(node).add(role.name);
