@@ -10,6 +10,9 @@ await check('teacher line plus named learner flags both rules',wrap('<p class="h
 await check('capitalised teacher cue flags named learner',wrap('<p>Ask Jordan to explain the method.</p>'),['B35-CONTENT-002','B35-CONTENT-003']);
 await check('generic teacher delivery cue needs no pupil name',wrap('<p>Ask the students to compare their answers.</p>'),['B35-CONTENT-002']);
 await check('pacing note is not a mathematical hint',wrap('<div class="note">Pause here; attempt every question before opening the answer slide.</div>'),['B35-CONTENT-002']);
+await check('named readiness instruction on transition page is flagged',wrap('<div class="pause-point">Stop here when Casey is ready; continue next time.</div>').replace('slide active','slide finish active'),['B35-CONTENT-002','B35-CONTENT-003']);
+await check('one-segment-at-a-time direction is teacher workflow',wrap('<div class="note">Teach one segment at a time.</div>'),['B35-CONTENT-002']);
+await check('mathematical transition explanation remains valid',wrap('<div>Identify common factors before simplifying a quotient.</div>'));
 await check('teacher note marker is actionable',wrap('<aside class="teacher-note">Discuss this tomorrow.</aside>'),['B35-CONTENT-002']);
 await check('split inline teacher sentence is inspected together',wrap('<p>Ask <b>Taylor</b> to explain.</p>'),['B35-CONTENT-002','B35-CONTENT-003']);
 await check('unrevealed teacher directions are still authored leakage',wrap('<p data-step="1" style="visibility:hidden">Reveal each answer separately.</p>'),['B35-CONTENT-002']);
