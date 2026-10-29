@@ -186,9 +186,13 @@ function auditFormulaStyles(config) {
         const fontNodes = equationValues.flatMap((value) => value.node.localName === "math"
           ? [value.node, ...value.node.querySelectorAll("mi,mn,mo,mtext")].filter(visible) : [value.node]);
         const families = [...new Set(fontNodes.map(family))];
+        const mixedPlainAndMath = equationValues.some(value => value.node.localName === "math")
+          && equationValues.some(value => value.node.localName !== "math" && /\d/.test(value.text));
         if (families.length > 1) emit("B35-MATH-006", typographySeverity,
-          `One formula uses different computed font families: ${families.join(", ")}.`, root, {
-            kind: "within-formula-family", families,
+          mixedPlainAndMath
+            ? `Adjacent ordinary digits and rendered maths use different font families: ${families.join(", ")}. Align their base typography in this expression.`
+            : `One formula uses different computed font families: ${families.join(", ")}.`, root, {
+            kind: "within-formula-family", families, mixedPlainAndMath,
             tokens: equationValues.map((value) => ({ text: value.node.getAttribute("aria-label") || value.text.trim().slice(0, 60), family: family(value.node), selector: selector(value.node) }))
           });
         const sizes = equationValues.flatMap((value) => value.node.localName === "math" ? baseMathTokens(value.node).map(fontSize) : [fontSize(value.node)]).filter((size) => size > 0);

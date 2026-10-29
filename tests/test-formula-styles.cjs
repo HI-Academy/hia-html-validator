@@ -24,6 +24,9 @@ async function main() {
     };
     await check("same-family formula passes", wrap("x + 1 = y"), "B35-MATH-006", false);
     await check("mixed formula families warn", wrap('<span style="font-family:Georgia">x + 1</span> = y'), "B35-MATH-006", true);
+    await check("ordinary digits beside a fraction warn on family", wrap('<span style="font-family:Georgia;font-weight:900">17 + </span><math style="font-family:Arial;font-weight:400"><mfrac><mn>6</mn><mn>2</mn></mfrac></math>'), "B35-MATH-006", true, "within-formula-family");
+    await check("ordinary digits beside a fraction warn on weight", wrap('<span style="font-family:Arial;font-weight:900">17 + </span><math style="font-family:Arial;font-weight:400"><mfrac><mn>6</mn><mn>2</mn></mfrac></math>'), "B35-MATH-016", true, "within-formula-weight");
+    await check("consistent ordinary and fraction digits pass family", wrap('<span>17 + </span><math><mfrac><mn>6</mn><mn>2</mn></mfrac></math>'), "B35-MATH-006", false, "within-formula-family");
     await check("large base-size mismatch warns", wrap('<span style="font-size:12px">x + 1</span> = y'), "B35-MATH-007", true);
     await check("ordinary exponent size is allowed", wrap('x<sup style="font-size:10px">2</sup> = y<sup style="font-size:10px">2</sup>'), "B35-MATH-007", false);
     await check("fraction script levels are allowed", wrap(`${fraction} = ${fraction}`), "B35-MATH-007", false);
