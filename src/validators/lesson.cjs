@@ -11,6 +11,7 @@ const { auditVisualModels } = require("../rules/visual-model-rules.cjs");
 const { auditVisualReview } = require("../rules/visual-review-rules.cjs");
 const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs");
 const { auditTextContrast } = require("../rules/text-contrast-rules.cjs");
+const { auditPresentation } = require("../rules/presentation-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
 const { captureAnswerSequence, observeAnswerSequence, auditAnswerReentry } = require("../rules/answer-sequence-rules.cjs");
@@ -512,6 +513,7 @@ async function runBrowserAudit(context) {
       result.issues.push(...await page.evaluate(auditVisualReview, context.config));
       result.issues.push(...await page.evaluate(auditComplementaryChecks, context.config));
       result.issues.push(...await page.evaluate(auditTextContrast, context.config));
+      result.issues.push(...await page.evaluate(auditPresentation, context.config));
       for(const item of await page.evaluate(auditLessonReusability, context.config)){
         const key=JSON.stringify([item.rule,item.slide,item.selector,item.evidence.attribute,item.evidence.text]);
         if(!reusabilityFindingKeys.has(key)){reusabilityFindingKeys.add(key);result.issues.push(item);}

@@ -4,7 +4,9 @@ Every run through `hia-html-validator` now records successful checks as well as
 findings and incomplete execution. This follows the run IDs, timestamps,
 versioned checks, fingerprints and separate review assertions used by the
 [question bank validator](https://github.com/HI-Academy/HIA-website/blob/v2-y4-data-model/scripts/validate-question-bank.mjs).
-The validation rules and approval requirements have not changed.
+History records the rules and outcomes used for each run; recording a review
+does not alter them. See [presentation rules](PRESENTATION_RULES.md) for the
+additional configurable visual-review checks in this release.
 
 ## Run and find the records
 
@@ -66,7 +68,7 @@ coverage fields, with these additions:
   canonical input path within this history root. Unchanged HTML retains its
   number; reverting to previously observed bytes reuses their original number.
   Renaming or moving an input starts a separate document history.
-- `ruleVersion`: `html-validation/1`, the history/check contract version.
+- `ruleVersion`: `html-validation/2`, the ruleset/check contract version.
   `version` identifies the package release; `validatorFingerprint` detects
   implementation changes even if the release number was not updated.
 - `inputFingerprint`: SHA-256 of the exact HTML bytes.

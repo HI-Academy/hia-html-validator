@@ -24,7 +24,7 @@ try {
   });
   const inventory = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" }).trim().split("\n");
   test("npm archive contains every relocated runtime component and agent docs", () => {
-    for (const name of ["bin/hia-html-validator.cjs", "src/cli/index.cjs", "src/core/cli-support.cjs", "src/core/history.cjs", "src/validators/lesson.cjs", "src/validators/html.cjs", "src/rules/complementary-rules.cjs", "config/b35.rules.json", "templates/b35-acceptance-template.md", "README.md", "AGENTS.md", "docs/CLI_GUIDE.md", "docs/HISTORY.md", "tests/test-cli.cjs", "tests/test-history.cjs", "scripts/test.cjs"]) {
+    for (const name of ["bin/hia-html-validator.cjs", "src/cli/index.cjs", "src/core/cli-support.cjs", "src/core/history.cjs", "src/validators/lesson.cjs", "src/validators/html.cjs", "src/rules/complementary-rules.cjs", "src/rules/presentation-rules.cjs", "config/b35.rules.json", "templates/b35-acceptance-template.md", "README.md", "AGENTS.md", "docs/CLI_GUIDE.md", "docs/HISTORY.md", "docs/PRESENTATION_RULES.md", "tests/test-cli.cjs", "tests/test-history.cjs", "tests/test-presentation.cjs", "scripts/test.cjs"]) {
       assert.ok(inventory.includes(`package/${name}`), name);
     }
     assert.ok(!inventory.some(name => /(?:^|\/)(?:node_modules|dist|private|lessons|test-results)\//.test(name)));

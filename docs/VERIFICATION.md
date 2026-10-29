@@ -1,5 +1,28 @@
 # Verification
 
+## 1.7.0 — Presentation review additions (30 October 2026)
+
+- All 57 new presentation cases pass using in-memory rendered DOM fixtures,
+  including comparison cards, explanatory prose, large block gaps, short final
+  lines, inline maths, watermark interference and intentional exceptions.
+- Existing focused suites pass: 83 visual-review, 127 complementary typography/
+  geometry, 105 formula-style, 40 visual-model and seven SVG-formula cases.
+  The 16 history and nine structure cases also pass.
+- These browser-audit checks use the existing system Chromium 154.0.8037.57 via
+  the package's Playwright dependency, rather than a downloaded matching binary.
+  They do not navigate to local HTML files or establish screenshot approval.
+- `npm test` was attempted with that browser. Structure, display-based slide and
+  answer-sequence tests pass before the grouped-reveal CLI check reaches the
+  browser's local-file navigation restriction. Full local-file/profile/package
+  rendering integration remains blocked by environment policy.
+- The installer rebuild succeeds. `npm run test:package` passes inventory,
+  temporary installation, aliases, source-preflight history and dependency-file
+  checks before local HTML rendering hits the same navigation policy.
+
+The screenshot's source HTML was not supplied; these are reusable rule
+regressions, not a completed validation of that particular page. The additions
+change the ruleset to `html-validation/2`; previous history records remain intact.
+
 ## 1.7.0 — Validation history (29 October 2026)
 
 Checked in the Linux development environment with Node.js 24.19.0, npm 11.9.0
@@ -23,7 +46,7 @@ and the package's pinned Playwright 1.62.1:
   redirects from `cdn.playwright.dev` to `storage.googleapis.com`, which the
   environment's network allowlist currently blocks. No browser pass is claimed.
 
-No rule implementation or thresholds changed. No real lesson, remote file,
+The history-only change did not alter rule implementations or thresholds. No real lesson, remote file,
 global package prefix or shell startup file was modified. Browser regression and
 fresh-install rendered checks must still be run after matching Chromium is
 available. Nothing was published to npm or GitHub.

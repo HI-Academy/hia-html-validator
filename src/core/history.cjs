@@ -4,7 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const pkg = require('../../package.json');
 
-const RULE_VERSION = 'html-validation/1';
+const RULE_VERSION = 'html-validation/2';
 const fingerprint = value => crypto.createHash('sha256').update(Buffer.isBuffer(value) ? value : JSON.stringify(stable(value))).digest('hex');
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);

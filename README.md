@@ -148,6 +148,11 @@ Exit code **0** means no automated errors, not visual acceptance. **1** means fi
 
 Radical/fraction-bar warnings can remain `review-required`: matching CSS font weights do not prove matching drawn strokes. No AI screenshot analysis, automatic approval, automatic fixes or accessibility audit is performed.
 
+Lesson checks also review large gaps between blocks, short callout endings,
+comparison-card alignment, inline mathematical placement and watermark
+intersections. These are configurable review warnings; see the
+[presentation rules](docs/PRESENTATION_RULES.md) for coverage and exceptions.
+
 ## 5. Useful options and configuration
 
 ```bash

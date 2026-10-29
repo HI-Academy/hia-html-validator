@@ -25,7 +25,7 @@ Use `data-b35-allow-equation-wrap` for a documented intentional layout. Arbitrar
 
 ## 2. Matching comparison cards
 
-By default, the check recognises a horizontal `.three` or `.four` group whose visible cards each contain a formula. It compares heading, formula and example roles. Vertically stacked practice cards are excluded. A position spread above **8 CSS pixels**, a formula-bottom spread above **16 pixels**, or differing formula families/base-size ratios can warn. Coordinates are normalised for slide scaling.
+By default, the check recognises a horizontal `.two`, `.three` or `.four` group whose visible cards each contain a formula/worked group. It compares heading, formula and example roles. At the final reveal it also checks card edges/heights and corresponding equation-row positions when row counts match. Vertically stacked/wrapped practice cards are excluded. A position spread above **8 CSS pixels**, a formula-bottom spread above **16 pixels**, or differing formula families/base-size ratios can warn. Coordinates are normalised for slide scaling. See [presentation rules](PRESENTATION_RULES.md) for row selectors and new spacing, inline-maths, callout and watermark checks.
 
 For a custom component, merge an entry into `visualReview.comparisonGroups`:
 

@@ -19,6 +19,11 @@ append-only records, review assertions, crash handling and path protection with
 synthetic runner outcomes. It needs no browser. Actual browser/history
 integration is covered by `test:cli`. Both suites are included in `npm test`.
 
+`npm run test:presentation` covers comparison-card alignment, explanatory prose,
+large gaps, short callout endings, inline mathematical placement and watermark
+interference using trusted in-memory browser fixtures. See
+[presentation rules](PRESENTATION_RULES.md) for selectors, thresholds and limits.
+
 For a new check, implement its browser audit under `src/rules/` (or source audit in the relevant runner), wire it into the correct profile, add configurable defaults under `config/`, and add positive, negative and intentional-exception regression cases. Preserve LLM-actionable location, observed/expected evidence, proposed action, verification and limitations. Do not clear warnings by weakening existing assertions.
 
 ## Package verification
