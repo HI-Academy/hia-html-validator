@@ -654,6 +654,12 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
+## Unmarked mathematics in prose — B35-MATH-023
+
+Visible question and explanation prose is checked for plain-text mathematical runs such as `9a + 9b`, `x + 2 = 4` and `3 × 4`. Each complete expression belongs inside MathML or the configured semantic maths renderer, with numbers, variables and operators using the maths font. Surrounding English retains the prose font. Changing the entire paragraph's font is not the remedy. Inline HTML wrappers do not bypass detection; semantic renderer boundaries, line breaks and separate blocks are respected. Findings include matched expressions and the affected panel selector, and are review warnings rather than automatic content rewrites.
+
+This is a conservative heuristic, not a parser or proof of mathematical completeness. It excludes existing MathML/KaTeX/MathJax, SVG, code, hidden content, navigation-style number badges and answer tags. Lone numbers/variables, ordinary words, units and unspaced hyphenated dates are not expressions for this check. Unsupported notation, separate-block expressions and rendered SVG text still need their existing checks or manual review. The rule follows `policy.visualReviewSeverity` and runs in the normal rendered lesson audit on each settled reveal state.
+
 ## Visual box reading order — B35-ORDER-004
 
 Diagram purpose matters: an original question figure may appear with the question, before worked steps. Mark it `data-b35-diagram-role="question"`, or place it inside `.challenge-box`, `.practice-question` or `[data-role="question"]`. A worked/answer figure uses `data-b35-diagram-role="solution"` and follows the normal reading/reveal order; an explicit solution role takes precedence over question-container location. `.visual-card` and `.step-solution` are included in the default panel coverage. Hiding only a diagram's answer labels does not hide its enclosing panel. An unclassified diagram that appears ahead of preceding hidden steps produces a `diagram-role-review` warning asking for purpose confirmation, rather than asserting an answer leak or automatically hiding it. These annotations express teaching intent; they do not certify that a figure contains no answer.

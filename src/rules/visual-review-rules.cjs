@@ -89,6 +89,32 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // MATH-023: find mathematical runs that never entered a maths renderer.
+    // Deliberately conservative: single-letter variables/numeric operands and
+    // explicit operators, not lone numbers, units, names or ordinary words.
+    const proseScopes='.prompt,.practice-question,.practice-answer,.step-solution,.hint,.note,p,[data-role="question"],[data-role="explanation"]';
+    const term='(?:\\d+(?:\\.\\d+)?[a-zA-Z]?|[a-zA-Z])';
+    const unmarkedExpression=new RegExp('(?<![\\w.])'+term+'(?:\\s*(?:[+=×÷−^]|\\s-\\s)\\s*'+term+')+(?!\\w|\\.\\d)','g');
+    for(const scope of slide.querySelectorAll(proseScopes)){
+      if(!visible(scope))continue;
+      const runs=[];let run='';
+      const walk=node=>{
+        if(node.nodeType===Node.TEXT_NODE){run+=node.textContent;return;}
+        if(node.nodeType!==Node.ELEMENT_NODE)return;
+        if(node!==scope&&(node.matches(semantic+',svg,script,style,code,pre,.practice-num,.answer-tag')||node.matches(proseScopes)||!visible(node))){runs.push(run);run='';return;}
+        if(node.localName==='br'){runs.push(run);run='';return;}
+        for(const child of node.childNodes)walk(child);
+      };
+      walk(scope);runs.push(run);
+      const expressions=[...new Set(runs.flatMap(text=>[...text.matchAll(unmarkedExpression)].map(match=>match[0].trim())))];
+      if(expressions.length)review('B35-MATH-023','Mathematical expressions are rendered as ordinary prose instead of semantic maths.',scope,{
+        kind:'unmarked-prose-maths',expressions,
+        expected:'Keep English prose in the prose font; encode each complete expression in MathML or the configured maths renderer.',
+        suggestedAction:'Wrap the complete expression, including numbers, variables and operators, in one maths renderer. Preserve values and surrounding English; do not change the whole paragraph font.',
+        limitations:'Conservative text heuristic, not a mathematical parser. Single symbols, units, unsupported syntax and expressions split across separate blocks may require manual review.'
+      });
+    }
+
     // ORDER-004: Compare reveal beats with the rendered reading order of
     // distinct content boxes. A later box must not appear before an earlier
     // one. Geometry is necessary: DOM order alone can differ from CSS layout.

@@ -22,6 +22,14 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    await check('plain coefficient expression warns',wrap('<p>Factor 9a + 9b.</p>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-MATH-023').evidence.expressions,['9a + 9b']));
+    await check('split inline algebra still warns',wrap('<p>Factor <b>9a</b> + <span>9b</span>.</p>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-023')));
+    await check('unmarked equation in explanation warns',wrap('<div class="step-solution">So x + 2 = 4</div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-023')));
+    await check('semantic algebra preserves English without warning',wrap('<p>Factor <math><mn>9</mn><mi>a</mi><mo>+</mo><mn>9</mn><mi>b</mi></math>.</p>'),none('B35-MATH-023'));
+    await check('units dates names and ordinary English pass',wrap('<p>Elinor has 9 apples and 5 m of ribbon. Use 12-24 hour time in 2026-2027.</p>'),none('B35-MATH-023'));
+    await check('hidden future expression waits for reveal',wrap('<p style="visibility:hidden">Factor 9a + 9b.</p>'),none('B35-MATH-023'));
+    await check('single numbers variables and labels pass',wrap('<p>Part a: use x and 9.</p>'),none('B35-MATH-023'));
+    await check('renderer boundaries cannot invent a prose equation',wrap('<p>Use a <math><mo>+</mo></math> b</p>'),none('B35-MATH-023'));
     const row='<div class="three"><div class="qcard" data-step="1" style="visibility:hidden">First explanation</div><div class="note">Second panel</div></div>';
     await check('right panel visible before left warns',wrap(row),items=>{const f=items.find(x=>x.rule==='B35-ORDER-004');assert.equal(f.evidence.kind,'box-reading-order');assert.equal(f.evidence.earlier.step,1);assert.equal(f.evidence.later.step,0);assert.equal(f.severity,'warning');});
     await check('same row left then right passes',wrap(row.replace('<div class="note">','<div class="note" data-step="2" style="visibility:hidden">')),none('B35-ORDER-004'));
