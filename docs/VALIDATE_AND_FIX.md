@@ -57,15 +57,7 @@ node -e 'const fs=require("node:fs"),p=require("node:path"),c=require("node:cryp
 
 A supplied `sha256` must match. Font-loading/decoding failures make the run
 incomplete; they do not silently become font assurance. The manifest registers
-fonts for that browser run without modifying HTML. Run records preserve actual
-font-file hashes/descriptors. `report.json` → `browser.fontEnvironment` records
-the browser version and sampled Chromium platform-font families, PostScript
-names and glyph counts. Inspect these to establish usage; a loaded font can be
-unused if CSS selects another family. Samples are bounded, not a whole-document
-font audit. Variable fonts may report an internal family such as Nunito ExtraLight
-even when CSS selects Nunito at another weight. Manifest names are supplied claims,
-and glyph counts do not measure visual weight. System font binaries and unrelated
-assets remain outside the content fingerprint.
+fonts for that browser run without modifying HTML. The latest summary does not retain full font-environment details. A loaded font is not proof of usage; manual verification requires separately inspecting the browser when font fidelity matters. System font binaries and unrelated assets remain outside the source fingerprint.
 
 System-installed fonts or page-owned `@font-face` resources also work. For strict
 reproduction prefer a checksummed manifest over an unpinned remote stylesheet.
@@ -76,12 +68,11 @@ reproduction prefer a checksummed manifest over an unpinned remote stylesheet.
 From an installed command (or substitute `node bin/hia-html-validator.cjs`):
 
 ```bash
-hia-html-validator lesson.html --profile lesson --pages 44 --viewport 1557x874 --font-manifest ./font-manifest.json --offline --out ./results/before --history ./validation-history
+hia-html-validator lesson.html --profile lesson --pages 44 --viewport 1557x874 --font-manifest ./font-manifest.json --offline --out ./results/before
 ```
 
 `--pages 44` or `--pages 2,4-6` selects **runtime** pages, numbered from 1 after
-script-driven merges. Confirm each `states[].slideId` and header against the
-requested source page. The input and its other pages remain in the DOM; the
+script-driven merges. Confirm the selected runtime page against the source lesson before running. The input and its other pages remain in the DOM; the
 runner uses ordinary forward navigation to reach the selection. It runs layout
 audits only on selected pages, entering at reveal 0 and capturing every selected
 reveal. It stops at the last requested page's final state. Stalled navigation,
@@ -97,7 +88,7 @@ File loading is the default and retains relative assets. For a self-contained
 HTML document, add `--load-mode memory` when in-memory rendering is desired:
 
 ```bash
-hia-html-validator lesson.html --pages 44 --load-mode memory --font-manifest ./font-manifest.json --viewport 1557x874 --offline --out ./results/before --history ./validation-history
+hia-html-validator lesson.html --pages 44 --load-mode memory --font-manifest ./font-manifest.json --viewport 1557x874 --offline --out ./results/before
 ```
 
 Memory mode uses `about:blank` and does not alter browser policies or start a
@@ -107,13 +98,7 @@ fetches and browser security behaviour can differ between transports. Resource
 discovery is conservative and not a full CSS/JavaScript parser. Record the
 transport and do not compare different transports as identical environments.
 
-Inspect fresh `report.json`, `report.md`, `visual-review.html`, `run.json`,
-`resolved-config.json`, `checks.jsonl` and `change-review.json`. Browser status
-must be `COMPLETED`. `summary` counts all emitted state findings, so a repeated
-defect can appear on several reveals. Lesson `finalStateSummary` counts only
-findings at each audited page's final reveal, excluding global/source findings.
-Use the same count definition for before/after comparisons. Screenshots are
-evidence for review, not automatic image analysis.
+Inspect the fresh `latest.json` and `latest.md` for input paths, exit status, errors, warnings and failure reasons. A scoped or static-only pass is not a full-deck visual acceptance. General HTML failures may include one screenshot; lesson failures retain textual evidence. The latest summary does not retain per-state counts or a visual-review gallery.
 
 ## Diagnose and repair the cause
 
@@ -149,7 +134,7 @@ Run the repaired copy with the **same** profile, page selection, viewport,
 configuration, transport, network mode and font manifest, using a fresh output:
 
 ```bash
-hia-html-validator lesson-repaired.html --pages 44 --load-mode memory --font-manifest ./font-manifest.json --viewport 1557x874 --offline --out ./results/after --history ./validation-history
+hia-html-validator lesson-repaired.html --pages 44 --load-mode memory --font-manifest ./font-manifest.json --viewport 1557x874 --offline --out ./results/after
 ```
 
 Compare the findings and screenshots, confirm every selected reveal remains

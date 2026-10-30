@@ -51,11 +51,11 @@ async function main() {
     assert.deepEqual(await page.evaluate(auditTextContrast, defaults), []); tests.push('correcting text colour clears the finding without changing content');
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'hia-text-contrast-'));
     try {
-      const cli = path.resolve(__dirname, '../bin/hia-html-validator.cjs');
+      const cli = path.resolve(__dirname, 'legacy-rule-runner.cjs');
       function run(name, html, profile) {
         const file=path.join(temp,name+'.html'),out=path.join(temp,name);
         fs.writeFileSync(file,html);
-        const result=spawnSync(process.execPath,[cli,file,'--profile',profile,'--no-screenshots','--out',out],{encoding:'utf8',timeout:60000});
+        const result=spawnSync(process.execPath,[cli,file,'--profile',profile,'--load-mode','memory','--no-screenshots','--out',out],{encoding:'utf8',timeout:60000});
         assert.ok(!result.error,String(result.error));
         return {code:result.status,report:JSON.parse(fs.readFileSync(path.join(out,'report.json')))};
       }

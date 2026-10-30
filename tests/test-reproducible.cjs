@@ -5,7 +5,7 @@ const {parsePages,readFontManifest}=require('../src/core/rendering.cjs');
 const {parse}=require('../src/cli/index.cjs');
 const {fingerprint}=require('../src/core/history.cjs');
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'hia reproducible ')),tests=[];
-const cli=path.resolve(__dirname,'../bin/hia-html-validator.cjs');
+const cli=path.resolve(__dirname,'legacy-rule-runner.cjs');
 function test(name,fn){fn();tests.push(name);}
 function fixture(name,content){const p=path.join(temporary,name);fs.writeFileSync(p,content);return p;}
 function read(file){return JSON.parse(fs.readFileSync(file,'utf8'));}

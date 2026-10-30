@@ -112,7 +112,7 @@ hia-html-validator ./lessons/*.html --out ./results
 hia-html-validator ./lessons --recursive --out ./results
 ```
 
-Batch mode creates separate per-file folders and a `batch-summary.json`.
+Batch mode places all results in the same latest summary.
 
 ## 3. Choose the right coverage
 
@@ -135,7 +135,7 @@ hia-html-validator lesson.html --pages 44 --viewport 1557x874 --font-manifest ./
 
 Selected-page runs keep the deck intact, traverse forward to the selection and
 audit only its reveal states. They omit source-wide, page-pair and backward
-re-entry checks; history baselines remain separate from full-deck runs. Font
+re-entry checks; selected-page runs do not constitute full-deck runs. Font
 manifests load local fonts into the browser and record exact hashes plus sampled
 actual glyph-font usage, without changing OS fonts or input HTML. Use
 `--load-mode memory` only for self-contained HTML; file loading remains the
@@ -145,22 +145,7 @@ General mode does **not** traverse arbitrary interactive/hidden slides, iframes 
 
 ## 4. Read the results
 
-- `report.md`: findings for a person to review.
-- `report.json`: detailed findings and evidence for an LLM or another tool.
-- `visual-review.html` and `screenshots/`: rendered evidence when capture is enabled.
-- `run.json`: package version, selected profile and exit status.
-- `resolved-config.json`: effective settings used for this run.
-- `checks.jsonl`: overall check outcome (including passes) and actual findings.
-- `change-review.json` and `change-review.md`: version-bound review draft and
-  comparison with the previous successful browser validation.
-
-Runs are automatically logged and archived under `.hia-html-validator/` in the
-working directory, including reports and screenshots. Unchanged HTML retains its
-document version; changed HTML receives a new version. Use `--history DIRECTORY`
-to share a history location across runs, `--log FILE.jsonl` for an additional
-append-only check log, or `--no-history` to omit persistent history. Separately
-recorded reviews remain tied to the exact run and evidence. See
-[validation history and change review](docs/HISTORY.md) for the workflow and limits.
+Each run replaces `latest.json` and `latest.md` in the output directory with the inputs, validator version, source hash, counts and failure summaries. A failed general HTML run may also retain a screenshot under `failure-evidence/`. Successful renders and intermediate reports remain temporary and are removed after the run. Prior evidence referenced by the previous summary is removed on the next run. `--history` and `--log` are no longer supported; no new automatic history is written. Existing historical files are not deleted.
 
 Exit code **0** means no automated errors, not visual acceptance. **1** means findings (also warnings when `--fail-on-warning` is used). **2** means invalid/incomplete validation and must not be accepted as a pass.
 

@@ -70,26 +70,7 @@ Lesson `summary` counts all emitted state findings; `finalStateSummary` counts
 the final reveal findings per audited page, excluding global/source findings.
 Keep count definitions and rendering conditions identical when comparing fixes.
 
-Open `report.md` for the findings, `report.json` for LLM/tool processing, and `visual-review.html` for screenshots. `run.json` records version/profile/exit status; `resolved-config.json` records effective thresholds and switches.
-
-Every primary-CLI run also writes `checks.jsonl`, `change-review.json` and
-`change-review.md`, and preserves its evidence in a uniquely named archive under
-`.hia-html-validator/` in the working directory. `validation-log.jsonl` includes
-successful checks, failed runs, source preflights and incomplete runs. Document
-versions and content/configuration/implementation/evidence fingerprints support
-comparisons with the last successful browser run. Reviews remain separate
-assertions; successful validation never grants visual acceptance.
-
-```bash
-hia-html-validator lesson.html --history ./validation-history --log ./audit/checks.jsonl
-hia-html-validator lesson.html --no-history
-hia-html-validator record-review ./validation-history/runs/RUN_ID --review ./review-decision.json
-```
-
-Copy a run's `change-review.json` outside the archive and fill its review fields
-before using `record-review`. See [history and review](HISTORY.md) for the schema,
-fingerprint scope, version semantics, retention and failure handling. Use the
-same history root to compare runs from different output directories.
+Each run overwrites `latest.json` and `latest.md` with the input paths, validator version, source hash, pass/fail/warning counts and failure summaries. Only failed general HTML runs may retain a screenshot in `failure-evidence/`; temporary rendered output is cleaned after execution. No history archive is created. The old `--history` and `--log` options are rejected. Existing archived runs are not modified.
 
 Use quotes around paths containing spaces. These examples are shell commands, not commands to paste into an HTML file.
 
@@ -119,7 +100,7 @@ hia-html-validator ./lessons/*.html --out ./results
 hia-html-validator ./lessons --recursive --out ./results
 ```
 
-Without `--recursive`, a directory supplies its top-level HTML files only. Batch reports get per-file subfolders with a short path hash so identical basenames do not collide. `batch-summary.json` gives all results and their individual exit statuses. The batch continues after a file has findings. Hidden directories, `node_modules`, recognised report folders and the explicitly selected output tree are excluded from recursive discovery; directory symlinks are not followed. Input order is deterministic within directory scans.
+Without `--recursive`, a directory supplies its top-level HTML files only. The single `latest.json` summary includes all input results and their exit statuses. The batch continues after a file has findings. Hidden directories, `node_modules`, recognised report folders and the explicitly selected output tree are excluded from recursive discovery; directory symlinks are not followed. Input order is deterministic within directory scans.
 
 ## Useful switches
 
