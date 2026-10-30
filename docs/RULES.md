@@ -670,6 +670,12 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
+## Diagram formula backgrounds — B35-DIAGRAM-006
+
+Formula overlays inside `.diagram-frame` / `[data-b35-diagram-frame]` labels should have transparent CSS backgrounds, allowing the diagram region colour to remain visible. The check inspects `.diagram-label` / `[data-b35-diagram-label]` containing MathML, fractions, KaTeX, MathJax or declared SVG maths/radicals. An opaque, translucent or image background on the label or its visible descendants triggers a review warning with the painted element selectors and computed colours. Ordinary prose labels and SVG region fills are outside this policy. The rule does not enforce white text, forbid coloured diagrams, or certify underlying SVG paint.
+
+A deliberate backing may use `data-b35-math-backing="contrast"` or `"emphasis"` and a non-empty `data-b35-math-backing-reason` on the label or the backed descendant. An annotation without a reason does not suppress the warning. Such declarations record author intent and do not establish visual or contrast acceptance. Preserve legibility, equations, root indices, region fills and reveal order when repairing a label. `visualReview.diagramMathBackgroundEnabled` controls this check; severity follows `policy.visualReviewSeverity`.
+
 ## Diagram frame label bounds — B35-DIAGRAM-005
 
 Visible `.diagram-label` and `[data-b35-diagram-label]` boxes inside `.diagram-frame` or `[data-b35-diagram-frame]` must fit the frame within `visualReview.diagramFrameTolerancePx` (default 2 design pixels). The warning reports the measured frame and label rectangles; wrapping, repositioning or enlarging the frame can repair genuine overflow. An intentionally external callout may use `data-b35-allow-label-outside` after review. This measures the declared HTML frame, not a decorative shape inside it, and cannot prove a bracket points to the correct mathematical token. Existing B35-DIAGRAM-003 target annotations address declared label targets but do not infer mathematical intent; check bracket-to-token relationships visually.

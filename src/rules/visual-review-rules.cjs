@@ -89,6 +89,31 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // A formula overlay should reveal its diagram's own painted colour.
+    // Its HTML/CSS backing is separate from an intentional SVG region fill.
+    if(settings.diagramMathBackgroundEnabled!==false){
+      for(const label of slide.querySelectorAll('.diagram-frame .diagram-label,[data-b35-diagram-frame] .diagram-label,.diagram-frame [data-b35-diagram-label],[data-b35-diagram-frame] [data-b35-diagram-label]')){
+        if(!visible(label)||!label.querySelector(semantic+',svg[role="math"],svg[data-b35-diagram="radical"]'))continue;
+        const painted=[];
+        for(const node of [label,...label.querySelectorAll('*')]){
+          if(!visible(node))continue;
+          const s=getComputedStyle(node),c=s.backgroundColor;
+          const alpha=c==='transparent'?0:/^rgba\(/.test(c)?Number(c.match(/[,/]\s*([\d.]+)\s*\)$/)?.[1]):1;
+          if(!(alpha>0)&&s.backgroundImage==='none')continue;
+          const backing=node.closest('[data-b35-math-backing]');
+          const purpose=backing?.getAttribute('data-b35-math-backing'),reason=backing?.getAttribute('data-b35-math-backing-reason')?.trim();
+          if(backing&&label.contains(backing)&&['contrast','emphasis'].includes(purpose)&&reason)continue;
+          painted.push({selector:pathFor(node),backgroundColor:c,backgroundImage:s.backgroundImage});
+        }
+        if(painted.length)review('B35-DIAGRAM-006','A diagram formula has an unclassified opaque or image background.',label,{
+          kind:'diagram-math-background',painted,
+          expected:'Diagram formula labels use transparent CSS backgrounds so the enclosing region colour remains visible, unless a reviewed backing has an explicit purpose.',
+          suggestedAction:'Remove the label or formula backing rather than changing the coloured diagram region. If a backing is needed, mark data-b35-math-backing="contrast" or "emphasis" with data-b35-math-backing-reason and verify legibility.',
+          limitations:'Computed CSS background inspection; does not infer underlying SVG paint, inspect pixels, or certify a declared backing. Intentional SVG region fills are not rejected. Text contrast still needs its own check.'
+        });
+      }
+    }
+
     // The HTML labels can extend beyond an SVG's decorative frame even if
     // the outer slide itself does not overflow.
     if(settings.diagramFrameBoundsEnabled!==false){

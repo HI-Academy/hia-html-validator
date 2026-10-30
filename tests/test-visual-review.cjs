@@ -22,6 +22,16 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    const mathBacking=(style,attrs='',inner='<math><mn>8</mn><mi>a</mi></math>')=>wrap('<div class="diagram-frame"><span class="diagram-label" '+attrs+' style="'+style+'">'+inner+'</span></div>');
+    await check('white diagram formula backing warns',mathBacking('background:white'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
+    await check('transparent formula overlay passes',mathBacking('background:transparent'),none('B35-DIAGRAM-006'));
+    await check('semi-transparent formula backing is still reviewed',mathBacking('background:rgba(255,255,255,.5)'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
+    await check('nested MathML backing is detected',mathBacking('','','<math style="background:white"><mn>8</mn></math>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
+    await check('intentional contrast backing needs purpose and reason',mathBacking('background:white','data-b35-math-backing="contrast" data-b35-math-backing-reason="Label crosses a dark connector"'),none('B35-DIAGRAM-006'));
+    await check('backing annotation without reason cannot suppress warning',mathBacking('background:white','data-b35-math-backing="contrast"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
+    await check('ordinary prose label is outside maths backing rule',mathBacking('background:white','','Diagram heading'),none('B35-DIAGRAM-006'));
+    await check('hidden formula backing waits until reveal',mathBacking('background:white;visibility:hidden'),none('B35-DIAGRAM-006'));
+    await check('filled diagram region is allowed behind transparent maths',mathBacking('background:transparent').replace('<span class="diagram-label"','<svg width="100" height="50"><rect width="100" height="50" fill="purple"/></svg><span class="diagram-label"'),none('B35-DIAGRAM-006'));
     const diagramLabel=style=>wrap('<div class="diagram-frame" style="position:relative;width:300px;height:120px"><span class="diagram-label" style="position:absolute;'+style+'">A diagram label</span></div>');
     await check('diagram label extending past frame warns',diagramLabel('left:260px;top:20px;white-space:nowrap'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-005')));
     await check('label within diagram frame passes',diagramLabel('left:20px;top:20px'),none('B35-DIAGRAM-005'));
