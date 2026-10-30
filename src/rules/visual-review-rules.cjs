@@ -89,15 +89,198 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // Independent practice is a choice sheet: every task is available on entry.
+    // Only task stems are checked; hints/answers may retain their own controls.
+    if(settings.practiceQuestionsEnabled!==false){
+      const heading=(slide.querySelector(config.selectors.header)?.textContent||'').trim();
+      const practice=slide.matches('[data-b35-page-role="practice"],[data-role="practice"]')
+        || /\b(?:practice time|independent practice|pick your level|worksheet)\b/i.test(heading);
+      if(practice){
+        const selector=settings.practiceQuestionSelectors||'[data-b35-role="question"],[data-role="question"],.practice-question,.q-text,.tt-q-text,.question-text,.qcard';
+        for(const question of slide.querySelectorAll(selector)){
+          if(question.closest('[data-b35-reveal-role="answer"],[data-b35-reveal-role="working"],.hint,.solution,.answer'))continue;
+          const gates=[];
+          for(let node=question;node&&node!==slide.parentElement;node=node.parentElement){
+            if(Number(node.getAttribute('data-step'))>0)gates.push({selector:pathFor(node),step:Number(node.getAttribute('data-step'))});
+          }
+          if(gates.length||!visible(question))review('B35-PRACTICE-001','Every independent-practice question must be visible on entry, without a reveal gate.',question,{
+            kind:'practice-question-hidden',gates,visibleNow:visible(question),
+            suggestedAction:'Remove question/ancestor reveal gates. Keep optional hints and answers separately controlled; do not expose solutions.',
+            verification:'Re-enter at step zero and confirm every practice task is visible while solutions stay concealed.'
+          });
+        }
+      }
+    }
+
+    // Text, numeric and formula overlays reveal the diagram's painted colour.
+    // Its HTML/CSS backing is separate from an intentional SVG region fill.
+    if(settings.diagramMathBackgroundEnabled!==false){
+      for(const label of slide.querySelectorAll('.diagram-frame .diagram-label,[data-b35-diagram-frame] .diagram-label,.diagram-frame [data-b35-diagram-label],[data-b35-diagram-frame] [data-b35-diagram-label]')){
+        if(!visible(label))continue;
+        const painted=[];
+        for(const node of [label,...label.querySelectorAll('*')]){
+          if(!visible(node))continue;
+          const s=getComputedStyle(node),c=s.backgroundColor;
+          const alpha=c==='transparent'?0:/^rgba\(/.test(c)?Number(c.match(/[,/]\s*([\d.]+)\s*\)$/)?.[1]):1;
+          if(!(alpha>0)&&s.backgroundImage==='none')continue;
+          const backing=node.closest('[data-b35-math-backing]');
+          const purpose=backing?.getAttribute('data-b35-math-backing'),reason=backing?.getAttribute('data-b35-math-backing-reason')?.trim();
+          if(backing&&label.contains(backing)&&['contrast','emphasis'].includes(purpose)&&reason)continue;
+          painted.push({selector:pathFor(node),backgroundColor:c,backgroundImage:s.backgroundImage});
+        }
+        if(painted.length)review('B35-DIAGRAM-006','A diagram label has an unclassified opaque or image background.',label,{
+          kind:'diagram-math-background',painted,
+          expected:'All diagram labels, including ordinary text and numbers, use transparent CSS backgrounds so the enclosing region colour remains visible, unless a reviewed backing has an explicit purpose.',
+          suggestedAction:'Remove the label or formula backing rather than changing the coloured diagram region. If a backing is needed, mark data-b35-math-backing="contrast" or "emphasis" with data-b35-math-backing-reason and verify legibility.',
+          limitations:'Computed CSS background inspection; does not infer underlying SVG paint, inspect pixels, or certify a declared backing. Intentional SVG region fills are not rejected. Text contrast still needs its own check.'
+        });
+      }
+    }
+
+    // The HTML labels can extend beyond an SVG's decorative frame even if
+    // the outer slide itself does not overflow.
+    if(settings.diagramFrameBoundsEnabled!==false){
+      for(const frame of slide.querySelectorAll('.diagram-frame,[data-b35-diagram-frame]')){
+        if(!visible(frame))continue;
+        const bounds=boxFor(frame),tolerance=(settings.diagramFrameTolerancePx??2)*scale;
+        for(const label of frame.querySelectorAll('.diagram-label,[data-b35-diagram-label]')){
+          if(!visible(label)||label.closest('[data-b35-allow-label-outside]'))continue;
+          const r=boxFor(label);
+          if(!contains(bounds,r,tolerance))review('B35-DIAGRAM-005','A diagram label extends outside its diagram frame.',label,{
+            kind:'label-outside-frame',frame:pathFor(frame),labelBounds:r,frameBounds:bounds,
+            expected:'Diagram labels remain inside their intended frame unless deliberately placed outside.',
+            suggestedAction:'Wrap or reposition the label, or enlarge its frame. Keep font readable and preserve the diagram meaning.',
+            limitations:'Rendered label and frame boxes; it cannot determine which formula token a bracket is intended to indicate.'
+          });
+        }
+      }
+    }
+
+    // Teaching purpose, not yellow colour, determines whether a note belongs
+    // before the task or after the final relevant solution beat.
+    if(settings.conclusionRevealEnabled!==false){
+      const revealStep=node=>{let step=0;for(let n=node;n&&n!==slide.parentElement;n=n.parentElement){const v=Number(n.getAttribute('data-step'));if(Number.isInteger(v)&&v>step)step=v;}return step;};
+      const workings=[...slide.querySelectorAll('.practice-answer,.step-solution,.eq,.work,[data-b35-content-role="solution"],[data-role="answer"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]')].filter(n=>!n.closest('[data-b35-note-role]'));
+      if(workings.length){
+        for(const note of slide.querySelectorAll('.note,[data-b35-note-role]')){
+          if(!visible(note)||note.closest('[data-b35-note-role="preface"]'))continue;
+          const group=note.parentElement?.closest('[data-b35-reveal-group]');
+          const local=group&&slide.contains(group)?workings.filter(node=>group.contains(node)):[];
+          const lastWorking=Math.max(0,...(local.length?local:workings).map(revealStep));
+          if(!lastWorking)continue;
+          const role=note.getAttribute('data-b35-note-role'),step=revealStep(note);
+          if(step>lastWorking)continue;
+          const conclusion=role==='conclusion';
+          review('B35-ORDER-005',conclusion?'A conclusion appears before the final solution reveal.':'A note appears before the final solution reveal; confirm its teaching purpose.',note,{
+            kind:conclusion?'early-conclusion':'note-purpose-review',noteRole:role||'unclassified',noteStep:step,lastWorkingStep:lastWorking,workingScope:pathFor(local.length?group:slide),
+            expected:'A conclusion appears after relevant answers and working; a prerequisite or question hint can appear earlier.',
+            suggestedAction:conclusion?'Reveal this conclusion on a separate step after the last relevant working or answer.':'Review its purpose. Mark conclusions data-b35-note-role="conclusion" and prerequisites data-b35-note-role="preface"; do not automatically hide or delete ambiguous content.',
+            limitations:'Checks declared note roles and recognised working/answer containers. It cannot infer instructional meaning from colour or prose; review other reveal engines and dependencies separately.'
+          });
+        }
+      }
+    }
+
+    // Boundary visibility is a review heuristic, not a universal requirement
+    // for borders or a WCAG conformance claim. Never prescribe a card colour.
+    if(settings.cardBoundaryEnabled!==false){
+      const rgba=value=>{const m=/^rgba?\(([^)]+)\)$/.exec(value);if(!m)return null;const n=m[1].split(/[,\s/]+/).filter(Boolean).map(Number);return n.length>=3&&n.every(Number.isFinite)?[n[0],n[1],n[2],n[3]??1]:null;};
+      const over=(a,b)=>{const alpha=a[3]+b[3]*(1-a[3]);return alpha?[...a.slice(0,3).map((x,i)=>(x*a[3]+b[i]*b[3]*(1-a[3]))/alpha),alpha]:[0,0,0,0];};
+      const contrast=(a,b)=>{const luminance=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+      const background=node=>{let color=[0,0,0,0];for(let n=node;n;n=n.parentElement){const s=getComputedStyle(n),c=rgba(s.backgroundColor);if(!c||s.backgroundImage!=='none'||s.filter!=='none'||s.mixBlendMode!=='normal'||Number(s.opacity)<1)return null;color=over(color,c);if(color[3]>=.999)return color;}return over(color,[255,255,255,1]);};
+      const selector=settings.cardBoundarySelectors||'.summary-card,.concept-card,.visual-card,.practice-question,.practice-answer,.step-solution,.qcard,.tcard,.card,[data-b35-content-panel]';
+      for(const card of slide.querySelectorAll(selector)){
+        if(!visible(card)||card.closest('[data-b35-boundary-intent="open-layout"]'))continue;
+        const s=getComputedStyle(card),outer=background(card.parentElement),inner=background(card);
+        if(!outer||!inner||s.boxShadow!=='none'||s.outlineStyle!=='none')continue;
+        const fillRatio=contrast(inner,outer),minimum=settings.cardBoundaryMinimumContrast??1.5;
+        if(fillRatio>=minimum)continue;
+        const edges=['Top','Right','Bottom','Left'].map(side=>{const width=parseFloat(s['border'+side+'Width'])||0,style=s['border'+side+'Style'],color=rgba(s['border'+side+'Color']);const ratio=width>0&&!['none','hidden'].includes(style)&&color?contrast(over(color,outer),outer):1;return {side:side.toLowerCase(),widthPx:width,contrast:ratio};});
+        if(edges.some(e=>e.contrast<minimum))review('B35-LAYOUT-010','Card boundary is missing or faint against a similar background.',card,{
+          kind:'card-boundary-review',fillContrast:fillRatio,minimumContrast:minimum,edges,
+          expected:'A card that needs a visible boundary is distinguished by a readable border, contrasting fill or separately reviewed shadow/outline.',
+          suggestedAction:'Inspect the peer cards. Strengthen the faint edges or use an intentional contrasting fill; no particular colour is required. Mark a genuinely borderless layout data-b35-boundary-intent="open-layout" only after review.',
+          limitations:'Solid CSS colour heuristic; the default 1.5 contrast is a lesson review threshold, not an accessibility standard. Shadows/outlines are left for visual review; gradients, filters, translucent ancestors and image backgrounds are not certified.'
+        });
+      }
+    }
+
+    // Native radical joins are renderer-painted, not exposed as DOM geometry.
+    // A semantic msqrt therefore cannot silently certify a smooth join.
+    if(settings.radicalJoinReviewEnabled!==false){
+      for(const node of slide.querySelectorAll('msqrt,mroot')){
+        if(!visible(node))continue;
+        review('B35-MATH-024','Native radical hook/overbar continuity requires rendered visual review.',node,{
+          kind:'native-radical-join-review',visualAppearanceVerified:false,
+          expected:'A continuous hook-to-overbar join without an unintended gap or step.',
+          suggestedAction:'Inspect at lesson size and enlarged resolution. If the renderer produces a stepped join, use a coherent continuous vector radical while preserving the complete radicand, root index and accessible maths meaning.',
+          limitation:'Native radical glyph/bar junctions are not exposed as DOM paths; this warning does not assert that the join is defective.'
+        });
+      }
+      const endpoints=node=>{
+        try{
+          const m=node.getScreenCTM();if(!m)return [];
+          const points=node.localName==='line'?[{x:node.x1.baseVal.value,y:node.y1.baseVal.value},{x:node.x2.baseVal.value,y:node.y2.baseVal.value}]
+            :[node.getPointAtLength(0),node.getPointAtLength(node.getTotalLength())];
+          return points.map(p=>new DOMPoint(p.x,p.y).matrixTransform(m));
+        }catch{return [];}
+      };
+      for(const node of slide.querySelectorAll('svg[data-b35-diagram="radical"]')){
+        if(!visible(node))continue;
+        const sign=node.querySelector('[data-b35-radical-sign]'),bar=node.querySelector('[data-b35-radical-overbar]');
+        if(!sign)continue; // Missing structure is reported by MATH-020.
+        let kind=null,gap=null;
+        if(bar){
+          const a=endpoints(sign),b=endpoints(bar);
+          if(!a.length||!b.length)kind='radical-join-unmeasurable';
+          else{gap=Math.min(...a.flatMap(p=>b.map(q=>Math.hypot(p.x-q.x,p.y-q.y))))/scale;
+            if(gap>.75)kind='detached-radical-overbar';}
+        }else if(sign.localName==='path'&&((sign.getAttribute('d')||'').match(/[Mm]/g)||[]).length!==1)kind='multi-subpath-radical-join-review';
+        else if(sign.localName!=='path'&&sign.localName!=='polyline')kind='radical-join-unmeasurable';
+        if(kind)review('B35-MATH-024','Radical hook/overbar join is detached or needs continuity review.',node,{
+          kind,endpointGapPx:gap,visualAppearanceVerified:false,
+          expected:'Use one connected hook/overbar path, or joined declared sign/overbar endpoints.',
+          suggestedAction:'Correct the join without changing the radicand, root index or font. Mark a separate overbar data-b35-radical-overbar and inspect the result at normal size.',
+          limitation:'Endpoint checks support declared SVG line/path geometry; passing them does not certify stroke aesthetics, hidden paths or mathematical correctness.'
+        });
+      }
+    }
+
+    // MATH-023: find mathematical runs that never entered a maths renderer.
+    // Deliberately conservative: single-letter variables/numeric operands and
+    // explicit operators, not lone numbers, units, names or ordinary words.
+    const proseScopes='.prompt,.practice-question,.practice-answer,.step-solution,.formula-prose,.diagram-label,.diagram-caption,.hint,.note,p,[data-role="question"],[data-role="explanation"]';
+    const term='(?:\\d+(?:\\.\\d+)?[a-zA-Z]?|[a-z][A-Z]|[a-zA-Z])';
+    const unmarkedExpression=new RegExp('(?<![\\w.])'+term+'(?:\\s*(?:[+=×÷−^]|\\s-\\s)\\s*'+term+')+(?!\\w|\\.\\d)','g');
+    for(const scope of slide.querySelectorAll(proseScopes)){
+      if(!visible(scope))continue;
+      const runs=[];let run='';
+      const walk=node=>{
+        if(node.nodeType===Node.TEXT_NODE){run+=node.textContent;return;}
+        if(node.nodeType!==Node.ELEMENT_NODE)return;
+        if(node!==scope&&(node.matches(semantic+',svg,script,style,code,pre,.practice-num,.answer-tag')||node.matches(proseScopes)||!visible(node))){runs.push(run);run='';return;}
+        if(node.localName==='br'){runs.push(run);run='';return;}
+        for(const child of node.childNodes)walk(child);
+      };
+      walk(scope);runs.push(run);
+      const expressions=[...new Set(runs.flatMap(text=>[...text.matchAll(unmarkedExpression)].map(match=>match[0].trim())))];
+      if(expressions.length)review('B35-MATH-023','Mathematical expressions are rendered as ordinary prose instead of semantic maths.',scope,{
+        kind:'unmarked-prose-maths',expressions,
+        expected:'Keep English prose in the prose font; encode each complete expression in MathML or the configured maths renderer.',
+        suggestedAction:'Wrap the complete expression, including numbers, variables and operators, in one maths renderer. Preserve values and surrounding English; do not change the whole paragraph font.',
+        limitations:'Conservative text heuristic, not a mathematical parser. Single symbols, units, unsupported syntax and expressions split across separate blocks may require manual review.'
+      });
+    }
+
     // ORDER-004: Compare reveal beats with the rendered reading order of
     // distinct content boxes. A later box must not appear before an earlier
     // one. Geometry is necessary: DOM order alone can differ from CSS layout.
     if (settings.boxReadingOrderEnabled !== false) {
-      const selector=settings.boxReadingOrderSelectors || '.qcard,.concept-card,.note,.box,.ss,.tcard,.card,.prompt,.practice-question,[data-b35-content-panel],[data-b35-reveal-order-card]';
+      const selector=settings.boxReadingOrderSelectors || '.qcard,.concept-card,.note,.box,.ss,.tcard,.card,.prompt,.practice-question,.step-solution,.visual-card,[data-b35-diagram-role],[data-b35-content-panel],[data-b35-reveal-order-card]';
       let nodes=[];
       try { nodes=[...slide.querySelectorAll(selector)]; } catch { nodes=[]; }
-      const candidates=nodes.filter(node=>!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order]'))
-        .filter(node=>!nodes.some(parent=>parent!==node&&parent.contains(node)))
+      const candidates=nodes.filter(node=>!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"]'))
+        .filter(node=>node.getAttribute('data-b35-diagram-role')==='solution'||!nodes.some(parent=>parent!==node&&parent.contains(node)))
         .map(node=>{
           const rect=boxFor(node);
           let step=0;
@@ -107,26 +290,111 @@ function auditVisualReview(config) {
               if(Number.isInteger(value)&&value>step)step=value;
             }
           }
-          return {node,rect,step};
+          const diagram=node.matches('.visual-card,[data-b35-diagram-role]');
+          const declared=node.closest('[data-b35-diagram-role]')?.getAttribute('data-b35-diagram-role');
+          // Explicit intent wins over location. A given belongs to the question;
+          // an unclassified diagram must not be silently treated as an answer.
+          const inQuestion=!!node.closest('.challenge-box,.practice-question,[data-role="question"]');
+          const role=diagram ? (['question','solution'].includes(declared) ? declared : declared ? 'unknown' : (inQuestion ? 'question' : 'unknown')) : inQuestion ? 'question' : null;
+          return {node,rect,step,role};
         }).filter(item=>item.rect.width>=20&&item.rect.height>=20);
       const rowTolerance=(settings.boxReadingOrderRowTolerancePx??18)*scale;
-      candidates.sort((a,b)=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance
-        ? a.rect.left-b.rect.left : a.rect.top-b.rect.top);
+      const spatial=(a,b)=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance ? a.rect.left-b.rect.left : a.rect.top-b.rect.top;
+      const gate=node=>{
+        let step=0;
+        for(let parent=node;parent&&parent!==slide.parentElement;parent=parent.parentElement){
+          const value=Number(parent.getAttribute('data-step'));if(Number.isInteger(value)&&value>step)step=value;
+        }
+        return step;
+      };
+      const excluded='[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"],[data-b35-diagram-role="question"],[data-role="question"],.practice-question,.challenge-box';
+      const workSelector='.step-solution,.practice-answer,.eq,.work,[data-role="answer"],[data-b35-content-role="solution"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]';
+      const work=[...slide.querySelectorAll(workSelector)].filter(node=>!node.closest(excluded));
+      const containers=new Set();
+      const revealNodes=[...slide.querySelectorAll('[data-step]')].filter(node=>!node.closest(excluded));
+      if(settings.groupedRevealEnabled!==false)for(const node of new Set([...work,...revealNodes]))for(let parent=node.parentElement;parent&&parent!==slide;parent=parent.parentElement){
+        if(parent.children.length>1&&/^(grid|inline-grid|flex|inline-flex)$/.test(getComputedStyle(parent).display))containers.add(parent);
+      }
+      const groups=[];
+      for(const container of containers){
+        if(container.closest(excluded))continue;
+        const rowMode=container.getAttribute('data-b35-reveal-order')==='rows'&&Boolean(container.getAttribute('data-b35-reveal-order-reason')?.trim());
+        if(rowMode)continue;
+        const columns=[...container.children].map(node=>{
+          const working=work.filter(item=>node.contains(item));
+          const notes=[...node.querySelectorAll('.note')].filter(item=>!item.closest(excluded));
+          const rows=revealNodes.filter(item=>item!==node&&node.contains(item));
+          return {node,rect:boxFor(node),working,rows,work:[...new Set([...working,...notes,...rows])]};
+        }).filter(item=>item.rect.width>=20&&item.rect.height>=20&&(item.working.length||item.rows.length));
+        // Only distinct horizontal teaching groups, not stacked/mobile content
+        // or a question figure followed by a solution, imply column completion.
+        if(columns.length<2||!columns.some((a,i)=>columns.slice(i+1).some(b=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance&&Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)<=2*scale)))continue;
+        columns.sort(spatial);groups.push({container,columns});
+      }
+      groups.sort((a,b)=>a.container.contains(b.container)?-1:b.container.contains(a.container)?1:0);
+      candidates.sort((a,b)=>{
+        for(const group of groups){
+          const ai=group.columns.findIndex(column=>column.node.contains(a.node)),bi=group.columns.findIndex(column=>column.node.contains(b.node));
+          if(ai>=0&&bi>=0&&ai!==bi)return ai-bi;
+        }
+        return spatial(a,b);
+      });
       const currentBeat=Math.max(0,...[...slide.querySelectorAll('[data-step]')]
         .filter(visible).map(node=>Number(node.getAttribute('data-step'))).filter(Number.isFinite));
+      for(const group of groups)for(let i=1;i<group.columns.length;i++){
+        const later=group.columns[i],start=gate(later.node);
+        if(!visible(later.node)||start!==currentBeat)continue;
+        const earlier=group.columns.slice(0,i).find(column=>column.work.some(node=>gate(node)>start&&!visible(node)));
+        if(!earlier)continue;
+        const pending=earlier.work.filter(node=>gate(node)>start&&!visible(node));
+        review('B35-ORDER-006','A later teaching group appears before the preceding group has finished.',later.node,{
+          kind:'teaching-group-interleaving',groupSelector:pathFor(group.container),
+          earlier:{selector:pathFor(earlier.node),lastWorkingStep:Math.max(...earlier.work.map(gate))},
+          later:{selector:pathFor(later.node),firstStep:start},pending:pending.map(node=>({selector:pathFor(node),step:gate(node)}))
+        });
+        Object.assign(issues.at(-1),{
+          expected:'Finish a teaching group from top to bottom before opening the next group from left to right.',
+          suggestedAction:'Reveal each panel with its first substantive step, complete its working, then open the next panel. For an intentional row-by-row comparison, declare data-b35-reveal-order="rows" and a concrete data-b35-reveal-order-reason on the shared layout.',
+          verification:['Inspect every reveal, including panel frames and headings.','Preserve original question figures, all mathematical content and the final conclusion.'],
+          confidence:'Side-by-side flex/grid groups containing working or nested reveal elements, including custom exercise/answer containers; semantic dependencies outside these bounds require review.'
+        });
+      }
+      // A derived row can inherit its panel's first beat even though the
+      // instructions above it have their own later gates. Audit these rows
+      // independently of the outer-panel candidate filter.
+      for(const row of slide.querySelectorAll('.eq,.formula,.work,.step-solution,[data-b35-equation],[data-b35-formula-row]')){
+        if(!visible(row)||row.closest('[data-b35-order-independent],[data-b35-ignore-reading-order],.prompt,[data-role="question"],[data-b35-note-role="preface"]'))continue;
+        const start=gate(row);if(start!==currentBeat)continue;
+        const scope=row.parentElement?.closest('[data-b35-reveal-group],.card,[data-b35-content-panel]')||row.parentElement;
+        if(!scope)continue;
+        const bounds=boxFor(row);
+        const pending=[...scope.querySelectorAll('[data-step]')].filter(node=>node!==row&&!node.contains(row)&&!row.contains(node)
+          &&!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"]')
+          &&(node.compareDocumentPosition(row)&Node.DOCUMENT_POSITION_FOLLOWING)&&gate(node)>start&&!visible(node)
+          &&boxFor(node).top<=bounds.top+rowTolerance);
+        if(!pending.length)continue;
+        review('B35-ORDER-007','A working/formula row appears before the preceding instructions in its teaching group.',row,{
+          kind:'early-derived-row',rowStep:start,scope:pathFor(scope),pending:pending.map(node=>({selector:pathFor(node),step:gate(node)})),
+          expected:'Finish preceding instructions before revealing the derived expression or working below them.',
+          suggestedAction:'Give the derived row its own reveal after the relevant preceding steps; do not rely only on the outer panel reveal. Preserve a genuine question/given that appears before its working.',
+          limitations:'Checks local DOM order, rendered vertical positions and effective reveal ancestry; it is not a proof of semantic dependence.'
+        });
+      }
       const seen=[];
       for(const later of candidates){
+        if(later.role==='question')continue;
         const earlier=seen.find(item=>item.step>later.step&&!visible(item.node));
         if(earlier&&visible(later.node)&&later.step===currentBeat){
-          review('B35-ORDER-004','A later content box is revealed before an earlier box in visual reading order.',later.node,{
-            kind:'box-reading-order',earlier:{selector:pathFor(earlier.node),step:earlier.step,top:Math.round(earlier.rect.top),left:Math.round(earlier.rect.left)},
+          const unknown=later.role==='unknown';
+          review('B35-ORDER-004',unknown ? 'A diagram appears before preceding steps; confirm whether it is a question given or a solution diagram.' : 'A later content box is revealed before an earlier box in visual reading order.',later.node,{
+            kind:unknown?'diagram-role-review':'box-reading-order',diagramRole:later.role,earlier:{selector:pathFor(earlier.node),step:earlier.step,top:Math.round(earlier.rect.top),left:Math.round(earlier.rect.left)},
             later:{selector:pathFor(later.node),step:later.step,top:Math.round(later.rect.top),left:Math.round(later.rect.left)}
           });
           const finding=issues.at(-1);
           if(finding?.rule==='B35-ORDER-004')Object.assign(finding,{
-            expected:'Content boxes reveal from top to bottom, and from left to right within the same row.',
+            expected:'Finish each recognised teaching group top to bottom, then proceed left to right; otherwise follow top-to-bottom, left-to-right box order.',
             impact:'A later box can appear before the preceding explanation or task.',
-            suggestedAction:'Adjust the reveal steps to follow the visual reading order, or mark a genuinely independent panel data-b35-order-independent.',
+            suggestedAction:unknown ? 'Confirm the diagram purpose. Mark original question figures data-b35-diagram-role="question", or worked/answer figures data-b35-diagram-role="solution" and align their reveal steps. Do not automatically hide unclassified figures.' : 'Adjust the reveal steps to follow the visual reading order. Original question figures may be marked data-b35-diagram-role="question"; genuinely independent panels may use data-b35-order-independent.',
             confidence:'Rendered box positions and declared data-step ancestry; semantic teaching dependencies are not inferred.',
             verification:['Inspect the first appearance of each box at the target viewport.','Recheck after layout or reveal changes.'],
             constraints:['Review warning; static boxes have step 0.','Nested boxes are compared through their outer box.']

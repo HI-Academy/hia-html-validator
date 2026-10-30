@@ -17,7 +17,9 @@
 - [ ] **Question treatment:** each student-attempt question has a distinct number chip and deep-navy task card; answers/workings are visually distinct.
 - [ ] **Page economy:** every surviving slide has a distinct teaching purpose; reminders, one-line answers, duplicate headings and shallow concept pages were merged where legible.
 - [ ] **Canvas composition:** no giant empty card, isolated short line, accidental whitespace, cramped bottom edge, clipping, collision, internal scroll or unreadable low-contrast text remains.
+- [ ] **Stable teaching frame:** columns/working begin at their shared top anchor, comparable page types use stable frames, and revealing answers does not move or resize those frames. Different page types and genuine long-content variants are reviewed separately; whitespace approval alone is not a layout exception.
 - [ ] **Mathematical layout:** fractions, powers, radicals, signs, equality, units, diagrams and multi-line equation spacing were checked in context.
+- [ ] **Optical proportions:** inspected actual fraction component sizes beside whole numbers and prose, plus radical baseline, hook/bar weight and full radicand coverage at lesson size. Matching font names, valid MathML, continuous strokes or no clipping alone do not establish acceptance. Record measured component/base ratios and normal-size evidence; enlarged crops are supplementary. Keep size/line-box warnings unresolved until repaired or specifically reviewed with reasons.
 - [ ] **Practice/review/challenge:** answers, relevant citations and intentional pause points remain; the task-card rule is consistent.
 - [ ] **Final runtime:** every slide and meaningful reveal state renders; navigator order is correct; scripts parse; automated bounds checks have no unresolved failures.
 - [ ] **Drive confirmation:** replacement was made once and in place; ID is unchanged; modified time and size changed; page delta and exact changes were recorded.
@@ -38,3 +40,4 @@ Record concrete evidence, not “passed QA”:
 10. Deep-navy task cards and distinct number chips across teaching, practice, review and challenge.
 11. Automated report location and unresolved warnings.
 12. Drive replacement metadata, when applicable.
+13. Fraction component/base sizes and radical/prose alignment at the intended viewport, including rejected candidates and the reason for any optical exception. A user-rejected optical decision must be withdrawn from the active review configuration; do not reinstate it solely to restore a zero-warning report.

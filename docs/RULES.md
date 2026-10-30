@@ -338,12 +338,18 @@ edit inputs or fabricate reviewer approvals.
 | `B35-CANVAS-001` | Slide/panel overflow, clipping and internal scrolling | Automated |
 | `B35-CANVAS-002` | Visible panels remain inside all four slide edges | Automated |
 | `B35-CANVAS-003` | Navigator does not cover visible teaching content | Automated |
+| `B35-NAV-001` | Visible navigator stays within the viewport at bottom centre | Automated rendered geometry |
+| `B35-NAV-002` | A reserved footer separates navigation from the complete teaching body | Automated rendered geometry |
+| `B35-NAV-003` | Page and reveal counters fit on one line without clipping | Automated text geometry |
 | `B35-CANVAS-004` | Unexpected sibling-panel collisions | Automated |
 | `B35-CANVAS-005` | Mostly-empty large cards and isolated short lines | Heuristic warning |
 | `B35-ORDER-001` | No answer element is visible at the initial reveal | Automated |
 | `B35-ORDER-002` | Identified question/answer pairs need a distinct question-only state, including shared revealing parents | Automated bounded structure/visibility check |
 | `B35-ORDER-003` | Previously hidden answers must reset on available previous-page navigation, without a visible fade-out | DOM visibility check; explicit coverage limits |
 | `B35-ORDER-004` | Content boxes reveal in visual reading order: top to bottom, then left to right within a row | Rendered sequencing review warning |
+| `B35-ORDER-006` | Complete each recognised teaching group before revealing the next panel | Rendered grouping/reveal review warning |
+| `B35-PRACTICE-001` | All independent-practice task stems visible on entry; no direct or inherited question gates | Rendered practice review warning |
+| `B35-ORDER-007` | A local working/formula row must not precede hidden instructions above it | Rendered local-order review warning |
 | `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
 | `B35-MATH-001` | No legacy `.frac` remains after runtime transformation | Automated |
@@ -360,6 +366,10 @@ edit inputs or fabricate reviewer approvals.
 | `B35-MATH-012` | Formula ink extends beyond an ancestor that clips or scrolls its content | Automated error |
 | `B35-MATH-013` | Ink from adjacent br-separated equation lines collides or has insufficient clearance | Error for collisions; warning for tight spacing |
 | `B35-MATH-014` | Fraction numeric glyph boxes are too small, disproportionate to surrounding digits, or inconsistent with peer fractions | Review warning |
+| `B35-MATH-022` | Inline radicals have excessive vertical wrapper padding relative to their surrounding prose | Review warning |
+| `B35-LAYOUT-007` | Teaching columns or working stack do not start at the shared top anchor | Review warning |
+| `B35-LAYOUT-008` | Question/working frames move or resize between settled reveal states | Review warning |
+| `B35-LAYOUT-009` | Same-family pages use inconsistent teaching frame positions or dimensions | Review warning |
 | `B35-MATH-015` | A formula soft-wraps across rendered lines without explicit equation-row boundaries | Review warning |
 | `B35-MATH-016` | Comparable equation base tokens mix regular and bold weights, including MathML radicals/fractions and SVG text | Review warning |
 | `B35-MATH-017` | A standalone teaching equation is consistently too small, even if its left/right font sizes match | Configurable readability warning |
@@ -380,6 +390,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-COMPOSITION-004` | A callout soft-wraps to a very short final line | Final-state review warning |
 | `B35-COMPOSITION-005` | Watermark text geometrically intersects several teaching elements at reviewable opacity | Review warning; pixels/occlusion unverified |
 | `B35-TYPE-005` | Inline mathematical base tokens have a displaced estimated baseline or excessive surrounding spacing | Review warning |
+| `B35-MATH-025` | Embedded SVG/MathML base-token baseline agrees with its surrounding MathML formula | Measured baseline review warning |
 | `B35-SVG-001` | SVG has a `viewBox` and non-zero geometry; accessible-name check is optional and off by default | Automated |
 | `B35-CONTRAST-001` | Visible direct text meets configured CSS colour contrast ratios outside cards | Warning |
 | `B35-CONTRAST-002` | Card text contrasts with its own nested/painted CSS background | Error |
@@ -392,7 +403,19 @@ edit inputs or fabricate reviewer approvals.
 
 `B35-MATH-006/007` already compare font families and relative base font sizes. They do not establish that a consistently small equation is readable, or that regular-weight MathML looks balanced against a bold answer. Formula discovery now also includes `.mini` teaching callouts and the nearest ordinary paragraph/callout around semantic maths. It does not promote unrelated card headings into equation text.
 
-For a substantive prose sentence containing inline semantic maths, `B35-MATH-006/007/016` compare the maths tokens with other maths tokens, but do not compare the intentionally distinct prose font/weight to the maths font/weight. A short standalone equation still compares all of its base tokens, and mismatched maths tokens inside a sentence still warn. This is a DOM/text heuristic; visual balance and ambiguous short labels still require review.
+For prose containing inline semantic maths, including a short cue such as “For (d):”, `B35-MATH-006/007/016` compare the maths tokens with other maths tokens, but do not compare the intentionally distinct prose font/weight to the maths font/weight. Peer rows likewise measure the semantic maths rather than a preceding prose cue. A short standalone equation still compares all of its base tokens, and mismatched maths tokens inside a sentence still warn. This is a DOM/text heuristic; visual balance and ambiguous short labels still require review.
+
+Question-number chips (`.question-number`) are labels, like `.qnum`, and are excluded from formula comparisons. Peer size comparisons distinguish display formulas (`.formula` or an explicit `display-formula` content role) from working: a larger property formula may accompany smaller working, while size differences between peers with the same role still warn. Formula families remain compared across these roles.
+
+An adjoining mathematical operator in prose is still part of the expression: `A student claims [MathML fraction] = 5 + 3` compares the HTML equation suffix with the fraction, while the English cue stays outside the comparison. Prose-only explanatory rows are excluded from peer equation comparisons.
+
+`B35-MATH-014` estimates the reference digits with the mathematical font/weight at the surrounding role's base size. It retains the absolute glyph-size floor, the peer-fraction comparison and actual SVG reference text. Using a different prose face must not change an otherwise identical fraction's optical ratio. A small mathematical font in a much larger paragraph can still warn.
+
+`B35-MATH-020` also flags a bare MathML radical glyph followed by operands without `msqrt`/`mroot`; writing `<mo>√</mo>` alone does not construct a bar over its radicand. An isolated radical-symbol reference is allowed.
+
+The question role contract also covers `.student-question`, `.question-math` and `.question-prose`: a class name containing “math” does not make an English sentence mathematical prose. Reusability checks include named readiness directions such as “Stop here when Casey is ready” on transition pages, and teacher pacing text such as “Teach one segment at a time”.
+
+Solution role coverage includes `.wide-answer`. A pure algebraic text fragment there, such as `(2x + 3)(x - 3)`, is checked as mathematics even when it is wrapped only in `strong`; English explanation remains prose. An answer panel does not inherit a valid mathematical role merely by using a bold font.
 
 `B35-MATH-016` warns when comparable base glyphs mix regular weight (≤500) and bold weight (≥600), with a difference of at least `formulaMaximumFontWeightDifference` (default 200). It examines fraction digits but excludes intentional exponent/subscript/root-index tokens. Renderer wrappers can reset weight to 400 even when both sides report the same font family and size. This is a review candidate, not a prohibition on deliberate emphasis; use `data-b35-allow-formula-weight` only after documenting an intentional exception.
 
@@ -525,9 +548,15 @@ Run **all browser regression checks** with `npm test`, or only the new style che
 
 This measures numeric MathML fraction glyph boxes after browser layout. Defaults warn when a fraction digit is below **7 CSS pixels** high, its median digit height is below **60%** of the estimated surrounding digit ink height, or peer fraction digit heights differ by a factor above **1.4**. This complements the CSS base-font-size rule: two tokens with equal CSS font size can render very differently.
 
-The check allows normal structural fraction reduction; it does not require numerator digits to be the same height as whole numbers. It ignores hidden content and structural exponent/subscript digits. Measurements are browser geometry plus canvas font-metric estimates, not a pixel segmentation of the screenshot or a guarantee about classroom readability. Current coverage is numeric MathML fractions; arbitrary path-drawn or image formulas need visual review.
+Top-level numeric fraction components must also use at least **85%** of the surrounding content role's base font size (`inlineFractionMinimumBaseFontRatio`). This is a lesson typography policy, not a claim that the browser's default 70% inline fraction is malformed. Equal root CSS sizes do not satisfy it: an 18px expression with 12.6px components warns. Font-size ratios are independent of viewport scaling and do not compare different prose and math faces' cap heights. Nested fractions and exponent/subscript fractions retain their structural reduction; nested digits are not counted again as outer fraction digits.
+
+The check does not require numerator glyphs to have exactly the same ink height as whole numbers. It ignores hidden content and structural exponent/subscript digits. Measurements are browser geometry plus canvas font-metric estimates, not screenshot segmentation or visual acceptance. Current coverage is numeric MathML fractions; arbitrary path-drawn or image formulas need visual review. Symbol-stroke approval records do not suppress this independent size check.
 
 Configure the `opticalFraction...` thresholds or use `data-b35-allow-optical-size` for a documented intentional exception.
+
+### Inline radical line boxes — B35-MATH-022
+
+An inline MathML wrapper containing a radical inside recognized prose warns when its combined vertical padding exceeds **20%** of that prose's font size (`inlineRadicalMaximumVerticalPaddingRatio`). For example, 9px bottom padding beside 18px prose warns. Hidden content, explicit block-display mathematics and structural exponent/subscript mathematics are excluded. A previous symbol-stroke approval cannot clear this check. The finding diagnoses wrapper geometry; it does not prove that a native radical's hook, overbar, weight or proportions are visually acceptable. Inspect those at lesson size, and retain ink/clipping checks after changing padding.
 
 ### Fraction-bar models — B35-DIAGRAM-001
 
@@ -648,7 +677,43 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
+## Diagram label backgrounds — B35-DIAGRAM-006
+
+All overlays inside `.diagram-frame` / `[data-b35-diagram-frame]` labels should have transparent CSS backgrounds, allowing the diagram region colour to remain visible. The check inspects every `.diagram-label` / `[data-b35-diagram-label]`, including ordinary headings, plain numeric lists and semantic mathematical expressions. It does not require MathML or infer the presence of maths from wording. An opaque, translucent or image background on the label or its visible descendants triggers a review warning with the painted element selectors and computed colours. SVG region fills are outside this policy. The rule does not enforce white text, forbid coloured diagrams, or certify underlying SVG paint. The existing `diagramMathBackgroundEnabled` setting and maths-backing annotation names are retained for compatibility and apply to all diagram labels.
+
+A deliberate backing may use `data-b35-math-backing="contrast"` or `"emphasis"` and a non-empty `data-b35-math-backing-reason` on the label or the backed descendant. An annotation without a reason does not suppress the warning. Such declarations record author intent and do not establish visual or contrast acceptance. Preserve legibility, equations, root indices, region fills and reveal order when repairing a label. `visualReview.diagramMathBackgroundEnabled` controls this check; severity follows `policy.visualReviewSeverity`.
+
+## Diagram frame label bounds — B35-DIAGRAM-005
+
+Visible `.diagram-label` and `[data-b35-diagram-label]` boxes inside `.diagram-frame` or `[data-b35-diagram-frame]` must fit the frame within `visualReview.diagramFrameTolerancePx` (default 2 design pixels). The warning reports the measured frame and label rectangles; wrapping, repositioning or enlarging the frame can repair genuine overflow. An intentionally external callout may use `data-b35-allow-label-outside` after review. This measures the declared HTML frame, not a decorative shape inside it, and cannot prove a bracket points to the correct mathematical token. Existing B35-DIAGRAM-003 target annotations address declared label targets but do not infer mathematical intent; check bracket-to-token relationships visually.
+
+## Teaching note reveal order — B35-ORDER-005
+
+When a page has delayed working or answers, a visible `data-b35-note-role="conclusion"` should appear on a later reveal beat than the last recognised solution or answer. A `data-b35-note-role="preface"` identifies a prerequisite or question hint that may appear earlier, and is excluded from the generic box-order warning. An unclassified `.note` visible before the final solution beat triggers a purpose-review warning rather than being assumed to be a conclusion. The check uses DOM roles and data-step ancestry, not note colour or inferred semantic meaning. It does not require a new reveal on pages without delayed working.
+
+The known working/answer selectors are `.step-solution`, `.practice-answer`, `[data-role="answer"]` and `[data-b35-reveal-role="working"|"answer"]`. If a note legitimately depends on only some of several independent tasks, or a lesson uses another navigation engine, inspect its purpose and reveal states manually. The rule emits review warnings and never hides or deletes content; an author must annotate the correct role and implement the reveal. Set `visualReview.conclusionRevealEnabled` to false only when intentionally omitting this coverage.
+
+## Card boundary visibility — B35-LAYOUT-010
+
+Visible cards on similar solid backgrounds should have discernible boundaries. The rendered check compares each border side and the card fill with the surrounding background, including transparent CSS colours. A missing/transparent edge or faint border warns when neither border nor fill meets `visualReview.cardBoundaryMinimumContrast` (default 1.5). This is a review heuristic, not a WCAG criterion or a requirement that every card have a border. No specific colour or first-card styling is prescribed.
+
+Default coverage includes summary/concept/visual cards, task and answer cards, worked-step cards and `[data-b35-content-panel]`. `visualReview.cardBoundarySelectors` can override the selection; `cardBoundaryEnabled` disables the check. A reviewed borderless layout may declare `data-b35-boundary-intent="open-layout"`. Existing shadows/outlines are left to visual review rather than rejected solely for missing borders. Gradients, image backgrounds, filters and translucent ancestor compositing are not certified. Findings include fill contrast and measurements for each edge. Do not add exceptions or replace approved colours merely to clear a warning; inspect the rendered card and its peers.
+
+## Radical hook/overbar continuity — B35-MATH-024
+
+Native `msqrt`/`mroot` semantics do not prove that the renderer draws a smooth join. Visible native roots receive a `native-radical-join-review` warning requiring normal-size and enlarged inspection, even if an older symbol-stroke approval exists. This is a review request, not a claim that every native root is defective. Set `visualReview.radicalJoinReviewEnabled` to false only when deliberately omitting this review coverage; report that limitation.
+
+For declared `svg[data-b35-diagram="radical"]`, use one connected path/polyline marked `data-b35-radical-sign`, with the radicand marked `data-b35-radicand`. A separate bar uses `data-b35-radical-overbar`. The rule compares transformed line/path endpoints, warning when the nearest endpoints differ by more than 0.75 design pixels; multiple path subpaths or unsupported geometry require review. A passing path check is not pixel analysis and does not certify stroke balance, clipping, the mathematical content, or arbitrary interior path junctions. Preserve radicands, root indices and accessible meaning during repair. Existing MATH-020 bounds checks and MATH-019 optical review still apply.
+
+## Unmarked mathematics in prose — B35-MATH-023
+
+Visible question and explanation prose, formula-prose containers, HTML diagram labels and captions are checked for plain-text mathematical runs such as `9a + 9b`, `x + 2 = 4`, `N = kA` and `3 × 4`. Each complete expression belongs inside MathML or the configured semantic maths renderer, with numbers, variables and operators using the maths font. Surrounding English retains the prose font. Changing the entire paragraph's font is not the remedy. Inline HTML wrappers do not bypass detection; semantic renderer boundaries, line breaks and separate blocks are respected. Findings include matched expressions and the affected panel selector, and are review warnings rather than automatic content rewrites.
+
+This is a conservative heuristic, not a parser or proof of mathematical completeness. It excludes existing MathML/KaTeX/MathJax, SVG, code, hidden content, navigation-style number badges and answer tags. Lone numbers/variables, ordinary words, units and unspaced hyphenated dates are not expressions for this check. Unsupported notation, separate-block expressions and rendered SVG text still need their existing checks or manual review. The rule follows `policy.visualReviewSeverity` and runs in the normal rendered lesson audit on each settled reveal state.
+
 ## Visual box reading order — B35-ORDER-004
+
+Diagram purpose matters: an original question figure may appear with the question, before worked steps. Mark it `data-b35-diagram-role="question"`, or place it inside `.challenge-box`, `.practice-question` or `[data-role="question"]`. A worked/answer figure uses `data-b35-diagram-role="solution"` and follows the normal reading/reveal order; an explicit solution role takes precedence over question-container location. `.visual-card` and `.step-solution` are included in the default panel coverage. Hiding only a diagram's answer labels does not hide its enclosing panel. An unclassified diagram that appears ahead of preceding hidden steps produces a `diagram-role-review` warning asking for purpose confirmation, rather than asserting an answer leak or automatically hiding it. These annotations express teaching intent; they do not certify that a figure contains no answer.
 
 The rendered lesson compares content boxes by position, top to bottom and left to right within a row. A static box has reveal step 0; a box inside one or more `data-step` containers takes the latest ancestor step. If a visually later box appears while an earlier box is still hidden, the validator emits a review warning at the later box's first appearance, with both box positions and steps. This applies to questions, notes, examples, explanations and other content boxes without relying on their wording. Nested boxes are compared through their outer box.
 
@@ -728,3 +793,57 @@ Run its focused regressions with:
 ```bash
 npm run test:page-pairs -- --lesson /absolute/path/to/Y8_Ch07_Percentages.html
 ```
+
+## Stable teaching frames — B35-LAYOUT-007/008/009
+
+Lesson-mode browser traversal captures unscaled frame geometry at every settled reveal in `layoutStates`. Recognized roles are grouped separately: worked examples (task/working), concept diagrams (concept/diagram), concept details (concept/card), paired practice (questions/answers), and uniform comparison, summary or route-map groups with two to four columns. Column count and role signatures remain distinct. Cover/closing pages and unrecognized layouts are outside automatic coverage. General HTML mode and source-only validation do not certify cross-page or reveal stability.
+
+- `007` checks the columns' top anchor and the working stack's first laid-out child. Content-dependent vertical centring leaves an offset and warns.
+- `008` compares each page's question/working frame positions, widths and heights with its first observed reveal. Reserve the final working area with layout-preserving hiding instead of letting new answers resize the frame. Individual step cards may be different heights; the check compares their containing frame.
+- `009` compares initial frames across pages of the same inferred/declared family. It reports dimensional ranges and every related page; the first page is not assumed to be an approved reference. Different page types are not forced into identical frames.
+
+`layoutStability` configures `enabled`, `groupSelectors`, and `tolerancePx` (default **8 design pixels**). `policy.layoutStabilitySeverity` defaults to `warning`. A non-empty `data-b35-layout-family` on the slide or group identifies an intended template variant; the column role signature remains part of its comparison key. A specific `data-b35-layout-variation="reason"` excludes that page/group from cross-page frame comparison only. It does not exempt top alignment, reveal shifts, bounds or content fit. A whitespace approval cannot suppress these checks.
+
+Repair the shared template rather than adjusting each page to its current amount of text. Use a different documented frame variant if a longer question genuinely requires more room; do not shrink type, clip content or remove working to force equal heights. DOM geometry is not visual acceptance. Inspect normal-size initial/final screenshots after repair.
+
+Focused regressions: `node tests/test-layout-stability.cjs` (also included in `npm test`).
+
+
+## Bottom navigation and reserved footer
+
+Lesson mode checks `B35-NAV-001`–`003` on every audited reveal, including later pages. The navigator is the configured `selectors.navigator` (default `.nav`). It must be visible within the viewport, centred horizontally (default tolerance 16 CSS px), and within 24 CSS px of the viewport bottom. This detects a top-right navigator even when it covers no recognised panel.
+
+Reserve a footer below the active slide's complete teaching body (`selectors.body`), with at least 2 CSS px clearance (subject to the existing geometry tolerance). If no body exists, the whole slide is the teaching area. A footer can be outside the slide or inside it below a shorter teaching body; no particular HTML filename, slide dimensions or fixed 42px footer is required. Empty space on an early reveal is not reserved footer space. Existing `B35-CANVAS-003` content-overlap checks still apply.
+
+`B35-NAV-003` inspects visible text geometry in page/step counters for multiple lines or ink extending outside the counter or navigator. Default counter selectors are `#counter, #step, #step-badge, [data-step-counter]`; nested inline markup on the same line is allowed. Counter values still have their separate `B35-RUNTIME-001` checks.
+
+These are default lesson errors, not screenshot acceptance or a general-web-page navigation requirement. The `navigationLayout` configuration holds `enabled`, `centreTolerancePx`, `maximumBottomGapPx`, `minimumClearancePx` and `counterSelectors`. An explicit `enabled:false` omits these three checks only; reports retain the resolved configuration and existing overlap checks remain enabled. Revalidate at intended viewports and inspect the screenshots; this rule does not establish touch-target accessibility or colour contrast.
+
+
+## Complete teaching groups before switching columns
+
+`B35-ORDER-006` warns when a later teaching panel (including its frame/title) first appears while a preceding panel still has hidden teaching content. It discovers horizontal flex/grid groups using rendered geometry, recognised working elements and nested `[data-step]` elements. It does not require a particular count of `.step-solution` rows: a single worked row and custom exercise/answer wrappers are covered. Working selectors include `.step-solution`, `.practice-answer`, `.eq`, `.work` and explicit answer/solution/working roles. Finish each group top to bottom before moving left to right. A panel may appear with its first substantive content; preserve a separate question-only beat where its answer follows.
+
+`B35-ORDER-004` uses these group boundaries when comparing boxes, so correctly completed left-panel working is not forced into row-by-row interleaving. Outside inferred groups its ordinary top-to-bottom/left-to-right comparison remains in place. Stacked mobile layouts do not imply horizontal group completion. Reasoned matching-row comparisons may declare `data-b35-reveal-order="rows"` and a nonempty concrete `data-b35-reveal-order-reason` on the shared layout; row-order checks still run. Original question figures and independent-panel declarations retain their existing allowances.
+
+A panel may declare `data-b35-reveal-group` to identify local instructional ownership. `B35-ORDER-005` requires local conclusions to follow that panel's relevant working on a later beat, while page-wide conclusions outside a panel follow all page working. Only an ancestor group containing recognised working establishes a local scope: putting the marker on the note itself or on an empty wrapper cannot waive pending work. `.eq`, `.work` and explicit solution-role elements participate in conclusion dependencies.
+
+`B35-ORDER-007` independently checks local `.eq`, `.formula`, `.work`, `.step-solution` and explicit equation/formula-row elements. An unmarked derived expression can inherit its panel's first beat while instructions above it remain hidden on later beats. Such a row now requires review even without its own `data-step`. The scope is the nearest ancestor reveal group/card/content panel, or the row parent. Earlier local DOM elements with later gates are compared, using their vertical positions where available. Give a derived row its own gate after the relevant instructions; preserve a genuine question/given before its working. Explicit question expressions retain their early allowance.
+
+`visualReview.groupedRevealEnabled:false` omits inferred grouping and ORDER-006. `boxReadingOrderEnabled:false` omits the reading-order family, including ORDER-007. These are bounded DOM/geometry checks, not a semantic proof or screenshot acceptance. Inspect every reveal after repairs. An annotation describes scope or intent; it does not implement reveal behaviour.
+
+
+## Embedded mathematics baseline — B35-MATH-025
+
+Base-level mathematical letters/numbers inside a mixed renderer must share the surrounding formula baseline. `B35-MATH-025` checks visible SVG `foreignObject` MathML inside a MathML `mtext`, including custom vector radicals. It measures internal/external zero-height MathML baseline probes and removes them in a `finally` block; measurements are used only if adding probes leaves SVG geometry unchanged within 0.25 design px. It accounts for an authored `mpadded`/`mstyle` carrier. Glyph bounding-box bottoms are not compared: a lowercase p descends below an uppercase A even when their baselines match.
+
+Default tolerance is max(1 design px, 0.08 times outer formula font size), configurable through `complementaryChecks.embeddedMathBaseline` (`enabled`, `tolerancePx`, `toleranceEm`). `policy.embeddedMathBaselineSeverity` defaults to `warning`; `off` omits findings. Symbol-rendering approvals do not waive this independent check.
+
+Fraction/script/accent/table/root-nested embeddings are excluded from this base-token comparison because their offsets may be structural. Native MathML, KaTeX/MathJax and arbitrary SVG text are not certified by this bounded check; existing typography/presentation/optical-review checks remain. A pass is not screenshot approval. Inspect normal-size formula context and revalidate after fonts, embedding metrics or geometry change. Regressions are in `tests/test-embedded-baseline.cjs` and included in `npm test`.
+
+
+### Independent practice question visibility
+
+`B35-PRACTICE-001` applies to explicit `data-b35-page-role="practice"` / `data-role="practice"` pages and headings containing Practice Time, Independent Practice, Pick Your Level or Worksheet. It checks question stems, including `.q-text`, `.tt-q-text`, `.practice-question`, `.question-text`, `.qcard` and explicit question roles, for hidden content or a positive `data-step` on the question or any ancestor. It still reports an entry-contract violation when the gate has already opened in the current state. All tasks must be available together on entry so students can choose their level. A practice-only question sheet needs no navigation steps.
+
+Hints, working and answers remain separately controlled: a collapsed Hint disclosure or an answer reveal is allowed. This rule does not require exposing solutions and does not disable answer-sequence checks. Ordinary guided/worked pages keep their teaching sequence. Custom question structures need explicit question semantics or `visualReview.practiceQuestionSelectors`; unrecognised headings need the practice page role. These bounded DOM checks do not infer arbitrary pedagogical intent. `visualReview.practiceQuestionsEnabled:false` omits the check.

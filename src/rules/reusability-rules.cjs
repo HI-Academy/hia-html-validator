@@ -27,6 +27,7 @@ function auditLessonReusability(config) {
   const namePattern="[\\p{Lu}][\\p{Ll}]+(?:[’'-][\\p{Lu}\\p{Ll}]+)?";
   const teacherName=new RegExp(`\\b(?:[Aa]sk|[Tt]ell|[Pp]rompt|[Ii]nvite|[Ee]ncourage)\\s+(${namePattern})\\s+to\\b`,'gu');
   const actor=new RegExp(`\\b(${namePattern})\\s+(?:has|had|earns?|earned|buys?|bought|walks?|walked|scores?|scored|spends?|spent|owns?|receives?|received|travels?|travelled|is\\s+(?:walking|buying|saving|paid))\\b`,'gu');
+  const readinessActor=new RegExp(`\\b(?:[Ss]top|[Pp]ause)\\s+here\\s+(?:when|until)\\s+(${namePattern})\\s+is\\s+ready\\b`,'gu');
   const teacherPatterns=[
     /\bguided\s+practice\s*[—–:-]\s*teacher\s+and\s+student\s+take\s+turns\b/iu,
     /\bteacher\s+(?:starts\s+the\s+first\s+useful\s+move|asks\s+for\s+a\s+check)\b/iu,
@@ -36,6 +37,8 @@ function auditLessonReusability(config) {
     /\b(?:ask|tell|prompt|invite|encourage)\s+(?:the\s+)?(?:students?|learners?|class)\b/iu,
     /\breveal\s+(?:one|each|the|all)\s+(?:\w+\s+){0,3}(?:line|step|answer|solution)s?\b/iu,
     /\bpause\s+here\b/iu,
+    /\bstop\s+here\s+(?:when|until)\s+\p{L}+\s+is\s+ready\b/iu,
+    /\bteach\s+(?:one|each)\s+(?:chapter|segment|lesson)\s+at\s+a\s+time\b/iu,
     /\bwork\s+together\s+before\s+revealing\b/iu,
     /\bbefore\s+opening\s+the\s+answer\s+slide\b/iu,
     /\bteacher\s+(?:language|talk|prompt)\b\s*:?/iu,
@@ -71,7 +74,7 @@ function auditLessonReusability(config) {
     const hits=[];
     for(const name of names)if(new RegExp(`(?<![\\p{L}\\p{N}_])${escape(name)}(?![\\p{L}\\p{N}_])`,'iu').test(text))hits.push(name);
     const turnActor=new RegExp(`\\b(${namePattern})\\s+completes\\s+the\\s+next\\s+move\\b`,'gu');
-    for(const re of [teacherName,actor,turnActor])for(const m of text.matchAll(re))if(!protectedTerms.has(m[1].toLocaleLowerCase()))hits.push(m[1]);
+    for(const re of [teacherName,actor,turnActor,readinessActor])for(const m of text.matchAll(re))if(!protectedTerms.has(m[1].toLocaleLowerCase()))hits.push(m[1]);
     if(metadata){
       for(const re of [new RegExp(`^(${namePattern})\\s*[·|—–:-]?\\s*(?:Y\\s*\\d{1,2}|Year\\s+\\d{1,2}|Grade\\s+\\d{1,2})\\b`,'u'),new RegExp(`^(${namePattern})['’]s\\s+(?:[Mm]aths?|[Ll]esson|[Pp]ractice|[Ww]orksheet)\\b`,'u'),new RegExp(`(?:[Ll]esson|[Pp]ractice|[Ww]orksheet)\\s+for\\s+(${namePattern})\\b`,'u')]){
         const m=text.match(re);if(m&&!protectedTerms.has(m[1].toLocaleLowerCase()))hits.push(m[1]);

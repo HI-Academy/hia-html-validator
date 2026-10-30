@@ -12,6 +12,7 @@ const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs")
 const { auditTextContrast } = require("../rules/text-contrast-rules.cjs");
 const { auditPresentation } = require("../rules/presentation-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
+const { captureLayoutState, auditLayoutStability } = require("../rules/layout-stability-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
 const { captureAnswerSequence, observeAnswerSequence, auditAnswerReentry } = require("../rules/answer-sequence-rules.cjs");
 const { configuration, coverage } = require("../core/cli-support.cjs");
@@ -362,8 +363,47 @@ function runtimeAuditFunction(config) {
     if (Object.values(outside).some((value) => value > tolerance)) push("B35-CANVAS-002", "error", "Visible panel extends beyond a slide edge.", element, outside);
   }
 
+  if ((!nav || !visible(nav)) && config.navigationLayout?.enabled !== false) {
+    push("B35-NAV-001", "error", "Navigator must be visible within the viewport at bottom centre.", nav,
+      { navigatorVisible: false });
+  }
   if (nav && visible(nav)) {
     const navRect = nav.getBoundingClientRect();
+    const layout = config.navigationLayout || {};
+    if (layout.enabled !== false) {
+      const centreOffsetPx = Math.abs((navRect.left + navRect.right) / 2 - innerWidth / 2);
+      const bottomGapPx = innerHeight - navRect.bottom;
+      const insideViewport = navRect.left >= -tolerance && navRect.right <= innerWidth + tolerance
+        && navRect.top >= -tolerance && navRect.bottom <= innerHeight + tolerance;
+      if (!insideViewport || centreOffsetPx > (layout.centreTolerancePx ?? 16)
+        || bottomGapPx > (layout.maximumBottomGapPx ?? 24)) {
+        push("B35-NAV-001", "error", "Navigator must be visible within the viewport at bottom centre.", nav,
+          { centreOffsetPx, bottomGapPx, insideViewport, viewport: { width: innerWidth, height: innerHeight } });
+      }
+      // Reserve a footer below the complete teaching body, not merely below
+      // whichever panels happen to be visible on an early reveal.
+      const bodies = [...slide.querySelectorAll(config.selectors.body)].filter(visible);
+      const teachingBottomPx = Math.max(...(bodies.length ? bodies.map(body => body.getBoundingClientRect().bottom) : [slideRect.bottom]));
+      const clearancePx = navRect.top - teachingBottomPx;
+      if (clearancePx + tolerance < (layout.minimumClearancePx ?? 2)) {
+        push("B35-NAV-002", "error", "Navigator needs a reserved footer below the teaching area.", nav,
+          { teachingBottomPx, navigatorTopPx: navRect.top, clearancePx, minimumClearancePx: layout.minimumClearancePx ?? 2 });
+      }
+      for (const counter of nav.querySelectorAll(layout.counterSelectors || "#counter, #step, #step-badge, [data-step-counter]")) {
+        if (!visible(counter)) continue;
+        const range = document.createRange(); range.selectNodeContents(counter);
+        const lines = [...range.getClientRects()].filter(rect => rect.width > 0.5 && rect.height > 0.5);
+        const box = counter.getBoundingClientRect();
+        const firstLine = lines[0];
+        const wrapped = firstLine && lines.some(rect => Math.min(rect.bottom, firstLine.bottom) - Math.max(rect.top, firstLine.top) <= 0.5);
+        const outsideCounter = lines.some(rect => rect.left < box.left - tolerance || rect.right > box.right + tolerance
+          || rect.top < box.top - tolerance || rect.bottom > box.bottom + tolerance);
+        const outsideNavigator = lines.some(rect => rect.left < navRect.left - tolerance || rect.right > navRect.right + tolerance
+          || rect.top < navRect.top - tolerance || rect.bottom > navRect.bottom + tolerance);
+        if (wrapped || outsideCounter || outsideNavigator) push("B35-NAV-003", "error", "Navigator counters must fit on one line without clipping.", counter,
+          { wrapped: Boolean(wrapped), outsideCounter, outsideNavigator, text: counter.textContent.trim() });
+      }
+    }
     for (const element of panels) {
       if (element === nav || element.contains(nav) || nav.contains(element)) continue;
       const hit = overlap(navRect, element.getBoundingClientRect());
@@ -479,6 +519,7 @@ async function runBrowserAudit(context) {
   const pageErrors = [];
   const failedRequests = [];
   const pagePairStates = [];
+  const layoutStates = [];
   const reusabilityFindingKeys = new Set();
   const answerFindingKeys = new Set(), questionHistory = new Set(), answerBaselines = new Map();
   const selectedPages = context.args.pages || null, fonts = readFontManifest(context.args.fontManifest);
@@ -495,9 +536,9 @@ async function runBrowserAudit(context) {
       await page.route(/^https?:/i, route => route.abort("blockedbyclient"));
       await page.routeWebSocket(/.*/, socket => socket.close());
     }
-    page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+    page.on("console", (message) => { if (message.type() === "error" && !(page.__hiaFontInspectorActive && message.text().startsWith('Unsafe attempt to load URL file:') && message.text().includes("'file:' URLs are treated as unique security origins"))) consoleErrors.push(message.text()); });
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    page.on("requestfailed", (request) => failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || "request failed" }));
+    page.on("requestfailed", (request) => { if (!(page.__hiaFontInspectorActive && request.url()===page.url() && request.failure()?.errorText==='origin')) failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || "request failed" }); });
     await loadDocument(page, context.file, { loadMode: context.args.loadMode, fonts });
 
     let guard = 0;
@@ -542,6 +583,7 @@ async function runBrowserAudit(context) {
         previousKey = stateKey;
         result.issues.forEach((item) => findings.push({ ...item, state: `${meta.step}/${meta.maxStep}` }));
         states.push(meta);
+        if(context.config.layoutStability?.enabled!==false)layoutStates.push(await page.evaluate(captureLayoutState,{config:context.config,metadata:meta}));
         if (!selectedPages && meta.step === 0 && context.config.pagePairs?.enabled !== false) {
           pagePairStates.push(await page.evaluate(capturePagePairState, { config:context.config, metadata:meta }));
         }
@@ -622,12 +664,13 @@ async function runBrowserAudit(context) {
     const answerReentry = selectedPages ? { findings: [], coverage: { enabled: false, stopReason: 'Page-scoped run: backward re-entry is not checked.' } } : await auditAnswerReentry(page, context.config, answerBaselines);
     findings.push(...answerReentry.findings);
     if (!selectedPages) findings.push(...auditPagePairs(pagePairStates, context.config));
+    findings.push(...auditLayoutStability(layoutStates,context.config));
     pageErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Page exception: ${message}`)));
     consoleErrors.filter(message=>!failedRequests.length||!/^Failed to load resource:/i.test(message)).forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Console error: ${message}`)));
     failedRequests.forEach((request) => findings.push(finding("B35-RUNTIME-002", context.config.policy.externalRequestFailureSeverity, `Resource failed to load: ${request.url}`, { evidence: request })));
-    return { blocked: false, findings, states, screenshots, pagePairStates, answerSequenceCoverage: answerReentry.coverage, runtime: runtimeCount, navigatedStates, fontEnvironment: { browserVersion: browser.version(), loadMode: context.args.loadMode || 'file', suppliedFonts: fonts.map(({data,...metadata})=>metadata), pages: fontEnvironments }, consoleErrors, pageErrors, failedRequests };
+    return { blocked: false, findings, states, screenshots, pagePairStates, layoutStates, answerSequenceCoverage: answerReentry.coverage, runtime: runtimeCount, navigatedStates, fontEnvironment: { browserVersion: browser.version(), loadMode: context.args.loadMode || 'file', suppliedFonts: fonts.map(({data,...metadata})=>metadata), pages: fontEnvironments }, consoleErrors, pageErrors, failedRequests };
   } catch (error) {
-    return { blocked: true, reason: error.message, findings, states, screenshots, pagePairStates, consoleErrors, pageErrors, failedRequests };
+    return { blocked: true, reason: error.message, findings, states, screenshots, pagePairStates, layoutStates, consoleErrors, pageErrors, failedRequests };
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
@@ -802,6 +845,7 @@ async function main() {
     findings,
     states: browser.states,
     pagePairStates: browser.pagePairStates || [],
+    layoutStates: browser.layoutStates || [],
     answerSequenceCoverage: browser.answerSequenceCoverage || { enabled: false, stopReason: "Browser re-entry audit not run." },
     screenshots: browser.screenshots,
     manualGates: MANUAL_GATES.map(([id, label]) => ({ id, label, status: "not reviewed" }))

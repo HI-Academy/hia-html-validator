@@ -77,6 +77,9 @@ config.complementaryChecks.proseTypography.enabled=false;
     const f=findings.find(x=>x.rule===rule);for(const field of ['selector','expected','impact','suggestedAction','confidence'])assert.ok(f[field]);assert.ok(f.verification.length>=2);assert.ok(f.constraints.length>=2);
   }
   await check('split glyph radical receives actionable construction warning',wrap('<span class="root"><span class="root-mark">√</span><span class="radicand">x</span></span>'),xs=>assert.ok(has(xs,'B35-MATH-020')));
+  await check('bare MathML radical glyph before operands warns',wrap('<math><mrow><mo>√</mo><mo>(</mo><mn>5</mn><mi>x</mi><mo>−</mo><mn>5</mn><mo>)</mo></mrow></math>'),xs=>assert.ok(has(xs,'B35-MATH-020')));
+  await check('semantic MathML radical passes construction check',wrap('<math><msqrt><mrow><mn>5</mn><mi>x</mi><mo>−</mo><mn>5</mn></mrow></msqrt></math>'),xs=>assert.equal(has(xs,'B35-MATH-020'),false));
+  await check('standalone radical symbol reference is allowed',wrap('<p>The radical symbol is <math><mo>√</mo></math>.</p>'),xs=>assert.equal(has(xs,'B35-MATH-020'),false));
   const radicalSvg='<svg data-b35-diagram="radical" width="100" height="40" viewBox="0 0 100 40"><path data-b35-radical-sign d="M1 20 L5 16 L10 30 L18 2 H98" fill="none" stroke="black"/><text data-b35-radicand x="22" y="26">x</text></svg>';
   await check('coherent SVG radical geometry does not trigger construction warning',wrap(radicalSvg),xs=>assert.equal(has(xs,'B35-MATH-020'),false));
   await check('radicand beyond bar is detected',wrap(radicalSvg.replace('x="22"','x="110"')),xs=>assert.ok(has(xs,'B35-MATH-020')));
@@ -145,6 +148,10 @@ config.complementaryChecks.proseTypography.enabled=false;
   const foundContrast=await check('contrast actionable evidence',wrap('<p class="prompt" style="font-weight:900">Compare '+inline+'</p>'),xs=>assert.ok(has(xs,'B35-TYPE-003')),proseRole);
   const contrast=foundContrast.find(x=>x.rule==='B35-TYPE-003');assert.equal(contrast.evidence.visualHarmonyVerified,false);assert.ok(contrast.evidence.measurements.length);for(const key of ['expected','impact','suggestedAction','confidence','verification','constraints'])assert.ok(contrast[key]);
   const roleStyle=clone();roleStyle.complementaryChecks.proseTypography.enabled=true;
+  await check('plain formula answer cannot inherit bold prose typography',wrap('<div class="wide-answer" style="font-family:Nunito;font-weight:800"><strong>(2x + 3)(x - 3)</strong></div>'),xs=>assert.ok(has(xs,'B35-TYPE-004')),roleStyle);
+  await check('native formula in a prose answer panel passes',wrap('<div class="wide-answer" style="font-family:Nunito;font-weight:800"><strong><math style="font-family:STIX Two Math;font-weight:400"><mrow><mo>(</mo><mn>2</mn><mi>x</mi><mo>+</mo><mn>3</mn><mo>)</mo><mo>(</mo><mi>x</mi><mo>−</mo><mn>3</mn><mo>)</mo></mrow></math></strong></div>'),xs=>assert.equal(has(xs,'B35-TYPE-004'),false),roleStyle);
+  await check('long question prose in a maths-named container still has a prose role',wrap('<div class="student-question"><span class="question-math" style="font-family:STIX Two Math;font-weight:400">A machine multiplies the starting number by six.</span></div>'),xs=>assert.ok(has(xs,'B35-TYPE-004')),roleStyle);
+  await check('question prose with separate inline maths passes its role',wrap('<div class="student-question"><span class="question-prose" style="font-family:Nunito;font-weight:900">A machine multiplies by <math style="font-family:STIX Two Math;font-weight:400"><mn>6</mn></math>.</span></div>'),xs=>assert.equal(has(xs,'B35-TYPE-004'),false),roleStyle);
   const approvedQuestion='<p class="prompt" style="font-family:Nunito;font-weight:900">Compare <span data-b35-formula style="font-family:STIX Two Math;font-weight:400"><math style="font-family:STIX Two Math;font-weight:400"><mfrac><mn>16</mn><mn>20</mn></mfrac></math></span> with the whole.</p>';
   await check('CH08 Nunito 900 prose with STIX Two Math 400 is an approved inline pairing',wrap(approvedQuestion),xs=>assert.equal(has(xs,'B35-TYPE-003'),false),roleStyle);
   for(const [name,html,expected] of [

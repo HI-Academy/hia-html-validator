@@ -26,6 +26,7 @@ async function main() {
     await check("mixed formula families warn", wrap('<span style="font-family:Georgia">x + 1</span> = y'), "B35-MATH-006", true);
     await check("ordinary digits beside a fraction warn on family", wrap('<span style="font-family:Georgia;font-weight:900">17 + </span><math style="font-family:Arial;font-weight:400"><mfrac><mn>6</mn><mn>2</mn></mfrac></math>'), "B35-MATH-006", true, "within-formula-family");
     await check("ordinary digits beside a fraction warn on weight", wrap('<span style="font-family:Arial;font-weight:900">17 + </span><math style="font-family:Arial;font-weight:400"><mfrac><mn>6</mn><mn>2</mn></mfrac></math>'), "B35-MATH-016", true, "within-formula-weight");
+    await check("question-number chip does not change formula base size", wrap('<span class="question-number" style="font-size:11px">2.24(a)</span><span style="font-size:21px">16(<math><mfrac><mi>x</mi><mn>2</mn></mfrac>)</span>'), "B35-MATH-007", false, "within-formula-size");
     await check("consistent ordinary and fraction digits pass family", wrap('<span>17 + </span><math><mfrac><mn>6</mn><mn>2</mn></mfrac></math>'), "B35-MATH-006", false, "within-formula-family");
     await check("large base-size mismatch warns", wrap('<span style="font-size:12px">x + 1</span> = y'), "B35-MATH-007", true);
     await check("ordinary exponent size is allowed", wrap('x<sup style="font-size:10px">2</sup> = y<sup style="font-size:10px">2</sup>'), "B35-MATH-007", false);
@@ -64,6 +65,8 @@ async function main() {
     await check("spaced equation lines pass", wrap("x + 1 = 2<br>x = 1", 'style="line-height:40px"'), "B35-MATH-013", false);
     await check("related formula families warn", wrap('<div data-b35-formula-set><div class="work" style="font-family:Georgia">x = 1</div><div class="work">y = 2</div></div>'), "B35-MATH-006", true, "peer-formula-family");
     await check("related formula sizes warn", wrap('<div data-b35-formula-set><div class="work" style="font-size:12px">x = 1</div><div class="work">y = 2</div></div>'), "B35-MATH-007", true, "peer-formula-size");
+    await check("display formula may be larger than working", wrap('<div data-b35-formula-set><div class="work" style="font-size:18px">x = 1</div><div class="formula" style="font-size:26px">y = 2</div></div>'), "B35-MATH-007", false, "peer-formula-size");
+    await check("different sizes within display role still warn", wrap('<div data-b35-formula-set><div class="formula" style="font-size:18px">x = 1</div><div class="formula" style="font-size:26px">y = 2</div></div>'), "B35-MATH-007", true, "peer-formula-size");
     await check("hidden formula is ignored", wrap('<div style="display:none"><span style="font-family:Georgia">x</span> = y</div>'), "B35-MATH-006", false);
     await check("intentional notation conversion is exempt", wrap(`${fraction} = 1/2`, "data-b35-allow-mixed-notation"), "B35-MATH-008", false);
     await check("SVG tspans with mixed fonts warn", wrap('<svg width="400" height="100"><text x="10" y="50" font-family="Arial">x = <tspan font-family="Georgia">y</tspan></text></svg>'), "B35-MATH-006", true);
@@ -75,6 +78,13 @@ async function main() {
     const proseMath = '<p style="font-family:Arial;font-weight:900">How many sixths equal <math style="font-family:Georgia;font-weight:400"><mfrac><mn>1</mn><mn>2</mn></mfrac></math> in this model?</p>';
     await check("inline maths in question prose uses a separate family", wrap(proseMath), "B35-MATH-006", false);
     await check("inline maths in question prose uses a separate weight", wrap(proseMath), "B35-MATH-016", false);
+    await check("short prose cue beside maths uses a separate weight", wrap('<div class="work" style="font-family:Arial;font-weight:800">For (d): <math style="font-family:Georgia;font-weight:400"><mfrac><mn>3</mn><mn>7</mn></mfrac></math></div>'), "B35-MATH-016", false, "within-formula-weight");
+    await check("short prose cue beside maths uses a separate family", wrap('<div class="work" style="font-family:Arial;font-weight:800">For (d): <math style="font-family:Georgia;font-weight:400"><mfrac><mn>3</mn><mn>7</mn></mfrac></math></div>'), "B35-MATH-006", false, "within-formula-family");
+    await check("prose does not conceal an HTML equation suffix", wrap('A student claims <math style="font-family:Georgia"><mfrac><mn>5</mn><mi>x</mi></mfrac></math> = 5 + 3.'), "B35-MATH-006", true, "within-formula-family");
+    await check("prose does not conceal an HTML equals prefix", wrap('<span style="font-weight:900">The value = </span><math style="font-weight:400"><mfrac><mn>5</mn><mn>8</mn></mfrac></math>'), "B35-MATH-016", true, "within-formula-weight");
+    await check("prose with a complete inline equation passes", wrap('A student claims <math style="font-family:Georgia"><mrow><mfrac><mn>5</mn><mi>x</mi></mfrac><mo>=</mo><mn>5</mn><mo>+</mo><mn>3</mn></mrow></math>.'), "B35-MATH-006", false, "within-formula-family");
+    await check("peer rows compare maths after prose cues", wrap('<div data-b35-formula-set><div class="work" style="font-family:Arial">For (a): <math style="font-family:Georgia"><mn>3</mn></math></div><div class="work"><math style="font-family:Georgia"><mn>7</mn></math></div></div>'), "B35-MATH-006", false, "peer-formula-family");
+    await check("prose explanation is not a peer equation", wrap('<div data-b35-formula-set><div class="work" style="font-family:Georgia">x + 1 = 2</div><div class="work" style="font-family:Arial">Do not turn -2 into +2 while moving terms.</div></div>'), "B35-MATH-006", false, "peer-formula-family");
     await check("two differently styled maths tokens in prose still warn", wrap('<p>Compare these two fractions: <math style="font-family:Georgia"><mn>1</mn></math> and <math style="font-family:Arial"><mn>2</mn></math>.</p>'), "B35-MATH-006", true);
     await check("one short equation still checks prose against maths", wrap('<math style="font-family:Georgia"><mn>1</mn></math> = 2'), "B35-MATH-006", true);
     await check("size change within MathML equation warns", wrap('<math><mi style="font-size:8px">x</mi><mo>=</mo><mn>1</mn></math>'), "B35-MATH-007", true);
