@@ -22,6 +22,14 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    const practice=html=>wrap(html).replace('Visual review regressions','Practice Time — Pick Your Level!');
+    await check('practice hidden question fails',practice('<div class="q-text" data-step="1" style="visibility:hidden">Find the factors.</div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-PRACTICE-001')));
+    await check('practice inherited gate fails',practice('<div data-step="2" style="display:none"><div class="tt-q-text">Find GCF.</div></div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-PRACTICE-001'&&x.evidence.gates[0].step===2)));
+    await check('practice later visible gate still fails entry contract',practice('<div data-step="2"><div class="q-text">Find LCM.</div></div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-PRACTICE-001')));
+    await check('all practice questions visible with hidden hints passes',practice('<div class="q-text">Find GCF.</div><div data-b35-reveal-role="working" data-step="1" style="visibility:hidden">Hint</div><div class="answer" data-step="2" style="display:none">12</div>'),none('B35-PRACTICE-001'));
+    await check('practice closed hint disclosure passes',practice('<div class="q-text">Find GCF.</div><details><summary>Hint</summary>Use factors.</details>'),none('B35-PRACTICE-001'));
+    await check('guided worked page retains question sequencing',wrap('<div class="q-text" data-step="1" style="visibility:hidden">Next example.</div>').replace('Visual review regressions','Guided practice'),none('B35-PRACTICE-001'));
+    await check('explicit practice role works without English heading',wrap('<div class="q-text" data-step="1">Task</div>').replace('id="fixture"','id="fixture" data-b35-page-role="practice"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-PRACTICE-001')));
     const mathBacking=(style,attrs='',inner='<math><mn>8</mn><mi>a</mi></math>')=>wrap('<div class="diagram-frame"><span class="diagram-label" '+attrs+' style="'+style+'">'+inner+'</span></div>');
     await check('white diagram formula backing warns',mathBacking('background:white'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
     await check('transparent formula overlay passes',mathBacking('background:transparent'),none('B35-DIAGRAM-006'));

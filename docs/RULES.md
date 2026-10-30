@@ -348,6 +348,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-ORDER-003` | Previously hidden answers must reset on available previous-page navigation, without a visible fade-out | DOM visibility check; explicit coverage limits |
 | `B35-ORDER-004` | Content boxes reveal in visual reading order: top to bottom, then left to right within a row | Rendered sequencing review warning |
 | `B35-ORDER-006` | Complete each recognised teaching group before revealing the next panel | Rendered grouping/reveal review warning |
+| `B35-PRACTICE-001` | All independent-practice task stems visible on entry; no direct or inherited question gates | Rendered practice review warning |
 | `B35-ORDER-007` | A local working/formula row must not precede hidden instructions above it | Rendered local-order review warning |
 | `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
@@ -839,3 +840,10 @@ Base-level mathematical letters/numbers inside a mixed renderer must share the s
 Default tolerance is max(1 design px, 0.08 times outer formula font size), configurable through `complementaryChecks.embeddedMathBaseline` (`enabled`, `tolerancePx`, `toleranceEm`). `policy.embeddedMathBaselineSeverity` defaults to `warning`; `off` omits findings. Symbol-rendering approvals do not waive this independent check.
 
 Fraction/script/accent/table/root-nested embeddings are excluded from this base-token comparison because their offsets may be structural. Native MathML, KaTeX/MathJax and arbitrary SVG text are not certified by this bounded check; existing typography/presentation/optical-review checks remain. A pass is not screenshot approval. Inspect normal-size formula context and revalidate after fonts, embedding metrics or geometry change. Regressions are in `tests/test-embedded-baseline.cjs` and included in `npm test`.
+
+
+### Independent practice question visibility
+
+`B35-PRACTICE-001` applies to explicit `data-b35-page-role="practice"` / `data-role="practice"` pages and headings containing Practice Time, Independent Practice, Pick Your Level or Worksheet. It checks question stems, including `.q-text`, `.tt-q-text`, `.practice-question`, `.question-text`, `.qcard` and explicit question roles, for hidden content or a positive `data-step` on the question or any ancestor. It still reports an entry-contract violation when the gate has already opened in the current state. All tasks must be available together on entry so students can choose their level. A practice-only question sheet needs no navigation steps.
+
+Hints, working and answers remain separately controlled: a collapsed Hint disclosure or an answer reveal is allowed. This rule does not require exposing solutions and does not disable answer-sequence checks. Ordinary guided/worked pages keep their teaching sequence. Custom question structures need explicit question semantics or `visualReview.practiceQuestionSelectors`; unrecognised headings need the practice page role. These bounded DOM checks do not infer arbitrary pedagogical intent. `visualReview.practiceQuestionsEnabled:false` omits the check.

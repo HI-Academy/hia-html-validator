@@ -89,6 +89,29 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // Independent practice is a choice sheet: every task is available on entry.
+    // Only task stems are checked; hints/answers may retain their own controls.
+    if(settings.practiceQuestionsEnabled!==false){
+      const heading=(slide.querySelector(config.selectors.header)?.textContent||'').trim();
+      const practice=slide.matches('[data-b35-page-role="practice"],[data-role="practice"]')
+        || /\b(?:practice time|independent practice|pick your level|worksheet)\b/i.test(heading);
+      if(practice){
+        const selector=settings.practiceQuestionSelectors||'[data-b35-role="question"],[data-role="question"],.practice-question,.q-text,.tt-q-text,.question-text,.qcard';
+        for(const question of slide.querySelectorAll(selector)){
+          if(question.closest('[data-b35-reveal-role="answer"],[data-b35-reveal-role="working"],.hint,.solution,.answer'))continue;
+          const gates=[];
+          for(let node=question;node&&node!==slide.parentElement;node=node.parentElement){
+            if(Number(node.getAttribute('data-step'))>0)gates.push({selector:pathFor(node),step:Number(node.getAttribute('data-step'))});
+          }
+          if(gates.length||!visible(question))review('B35-PRACTICE-001','Every independent-practice question must be visible on entry, without a reveal gate.',question,{
+            kind:'practice-question-hidden',gates,visibleNow:visible(question),
+            suggestedAction:'Remove question/ancestor reveal gates. Keep optional hints and answers separately controlled; do not expose solutions.',
+            verification:'Re-enter at step zero and confirm every practice task is visible while solutions stay concealed.'
+          });
+        }
+      }
+    }
+
     // Text, numeric and formula overlays reveal the diagram's painted colour.
     // Its HTML/CSS backing is separate from an intentional SVG region fill.
     if(settings.diagramMathBackgroundEnabled!==false){
