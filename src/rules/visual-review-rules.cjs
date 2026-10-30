@@ -89,6 +89,25 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // The HTML labels can extend beyond an SVG's decorative frame even if
+    // the outer slide itself does not overflow.
+    if(settings.diagramFrameBoundsEnabled!==false){
+      for(const frame of slide.querySelectorAll('.diagram-frame,[data-b35-diagram-frame]')){
+        if(!visible(frame))continue;
+        const bounds=boxFor(frame),tolerance=(settings.diagramFrameTolerancePx??2)*scale;
+        for(const label of frame.querySelectorAll('.diagram-label,[data-b35-diagram-label]')){
+          if(!visible(label)||label.closest('[data-b35-allow-label-outside]'))continue;
+          const r=boxFor(label);
+          if(!contains(bounds,r,tolerance))review('B35-DIAGRAM-004','A diagram label extends outside its diagram frame.',label,{
+            kind:'label-outside-frame',frame:pathFor(frame),labelBounds:r,frameBounds:bounds,
+            expected:'Diagram labels remain inside their intended frame unless deliberately placed outside.',
+            suggestedAction:'Wrap or reposition the label, or enlarge its frame. Keep font readable and preserve the diagram meaning.',
+            limitations:'Rendered label and frame boxes; it cannot determine which formula token a bracket is intended to indicate.'
+          });
+        }
+      }
+    }
+
     // Teaching purpose, not yellow colour, determines whether a note belongs
     // before the task or after the final relevant solution beat.
     if(settings.conclusionRevealEnabled!==false){
