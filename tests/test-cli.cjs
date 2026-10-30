@@ -4,8 +4,8 @@ const {parse,enumerate,playwrightCli}=require('../src/cli/index.cjs'),{configura
 const pkg=require('../package.json');
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'b35 cli test ')),tests=[];
 function test(name,fn){fn();tests.push(name);}
-const cli=path.join(__dirname,'../bin/hia-html-validator.cjs');
-function command(args){const r=spawnSync(process.execPath,[cli,...args],{cwd:temporary,encoding:'utf8',timeout:30000});if(r.error)throw r.error;return r;}
+const cli=path.join(__dirname,'legacy-rule-runner.cjs');
+function command(args){if(process.platform==='win32'&&!args.includes('--offline')&&!args.includes('--load-mode')&&args.some(v=>/\.html?$/i.test(v)))args=[...args,'--load-mode','memory'];const r=spawnSync(process.execPath,[cli,...args],{cwd:temporary,encoding:'utf8',timeout:30000});if(r.error)throw r.error;return r;}
 function fixture(name,body){const file=path.join(temporary,name);fs.writeFileSync(file,body);return file;}
 const doc=body=>`<!doctype html><html lang="en"><meta charset="utf-8"><title>CLI fixture</title><body>${body}</body></html>`;
 try{

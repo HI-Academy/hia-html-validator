@@ -12,20 +12,12 @@ The child runner is either `src/validators/lesson.cjs` (compatible B35 lesson na
 loading, local font-manifest validation and bounded platform-font evidence.
 Page-scoped lesson runs retain the DOM, navigate through preceding states without
 running their layout audits, and omit source-wide/page-pair/backward re-entry
-checks. Their successful history baselines are independent of full-deck runs.
+checks. Scoped runs are not full-deck validation.
 Font manifests register FontFace objects in the isolated browser run; no OS font
 installation, network download or input rewriting occurs. Browser version and
 supplied font-file metadata contribute to a rendering fingerprint.
 
-The CLI stages each run in a fresh temporary directory before publishing the
-latest reports. `src/core/history.cjs` fingerprints the HTML, resolved settings,
-validator implementation and saved evidence, archives unique runs, appends
-validation/check logs, and generates comparisons against successful browser
-baselines. A short exclusive lock protects history numbering and appends.
-Separate review assertions bind exact run/evidence fingerprints without
-changing automated findings or rule-specific approval contracts. See
-[history](HISTORY.md). The legacy lesson source command uses the same layer and
-forces the lesson profile; internal profile runners remain focused on audits.
+The CLI stages each run in a fresh temporary directory, then writes `latest.json` and `latest.md`. Failed general HTML validations can retain a screenshot; lesson failures retain the error summary. Temporary reports and successful screenshots are removed. `src/core/history.cjs` supplies source fingerprints and retains utilities for previously archived reviews; new runs do not create history archives. Both compatibility entry points use this same CLI; `validate-b35.cjs` forces the lesson profile.
 
 All lesson browser audits and page-pair snapshots support both `.active` slide markers and display-based navigation. When no slide carries the marker, they inspect the displayed slide with nonzero geometry, excluding hidden ancestors. Existing document-mode behavior is preserved. `tests/test-display-slides.cjs` verifies that known defects remain detectable across both navigation formats and on later slides.
 

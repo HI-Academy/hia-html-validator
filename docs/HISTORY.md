@@ -1,3 +1,7 @@
+# Previous validation history
+
+New CLI runs no longer create history archives or append logs. They overwrite `latest.json` and `latest.md` and keep only necessary failure evidence. The `--history` and `--log` options are no longer supported. Existing historical archives are not modified; the following describes only archives created by earlier releases and must not be used as instructions for new runs.
+
 # Validation history and change review
 
 Every run through `hia-html-validator` now records successful checks as well as

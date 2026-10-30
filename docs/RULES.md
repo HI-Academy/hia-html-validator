@@ -209,12 +209,7 @@ npm run validate -- /absolute/path/to/lesson.html \
   --static-only
 ```
 
-The browser run creates:
-
-- `report.json` — machine-readable findings and evidence.
-- `report.md` — concise audit report and B35 manual checklist.
-- `visual-review.html` — initial/middle/final reveal gallery with manual checkboxes.
-- `screenshots/` — rendered evidence used by the gallery.
+The CLI writes `latest.json` and `latest.md` containing counts, inputs, validator version, source fingerprint and failure summaries. A failed general-HTML run may retain a screenshot under `failure-evidence/`; temporary output and successful screenshots are cleaned. No screenshot gallery is retained.
 
 The process exits with:
 

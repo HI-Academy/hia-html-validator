@@ -16,7 +16,7 @@ Usage: hia-html-validator FILE.html [MORE.html ...] [options]
 
 Options:
   --profile auto|lesson|html  auto selects B35 for .slide lesson markup
-  --out DIRECTORY           output directory (batch: a subdirectory per file)
+  --out DIRECTORY           directory for latest summary and failure evidence
   --config FILE.json        JSON overrides, merged over profile defaults
   --viewport WIDTHxHEIGHT   single viewport, e.g. 1280x800
   --pages NUMBERS           lesson runtime pages, e.g. 44 or 2,4-6
@@ -28,9 +28,7 @@ Options:
   --fail-on-warning         exit 1 for warnings as well as errors
   --recursive               include nested .html/.htm files
   --timeout MILLISECONDS    per-file process limit, default 300000
-  --history DIRECTORY       history root (default: .hia-html-validator in cwd)
-  --no-history              omit persistent run archives/version history
-  --log FILE.jsonl          append overall results and actual findings
+  --no-history              accepted for backwards compatibility
   --help, -h                show help
   --version, -v             show version
 
@@ -101,20 +99,21 @@ function main(argv){
  }
  const a=parse(argv);if(a.help){console.log(help);return;}if(a.version){console.log(pkg.version);return;}if(!a.files.length)throw new Error(help);
  const explicitOut=a.out?path.resolve(a.out):null;
- const historyDirectory=a['no-history']?null:canonical(a.history||'.hia-html-validator'),logPath=a.log?canonical(a.log):null;
+ const historyDirectory=null,logPath=null;
+ if(a.history||a.log)throw new Error('--history and --log are no longer supported: only latest results are retained.');
  const files=enumerate(a.files,a.recursive,explicitOut,historyDirectory);if(!files.length)throw new Error('No .html or .htm files found.');
  const batch=files.length>1,outRoot=explicitOut||path.resolve('html-validation');
  const fontManifest=a['font-manifest']?fs.realpathSync(a['font-manifest']):null,fonts=readFontManifest(fontManifest);
  const protectedPaths=files.concat(a.config?[fs.realpathSync(a.config)]:[],fontManifest?[fontManifest]:[],fonts.map(f=>f.path));
  function protectOutput(target){protect(target,protectedPaths);if(historyDirectory&&inside(canonical(target),historyDirectory))throw new Error(`Report output cannot overwrite history: ${target}`);}
- if(batch)protectOutput(path.join(outRoot,'batch-summary.json'));
+ for(const name of ['latest.json','latest.md','latest.json.tmp','latest.md.tmp'])protectOutput(path.join(outRoot,name));
  // Validate every input/config/output plan before any generated file is written.
  const jobs=files.map(file=>{
   const input=fs.readFileSync(file),profile=profileFor(input.toString('utf8'),a.profile),config=configuration(a.config,profile,a.viewport);
   if(a.pages&&profile!=='lesson')throw new Error('--pages is supported only by the lesson profile');
   const slug=path.basename(file,path.extname(file)).replace(/[^\p{L}\p{N}_.-]/gu,'-')||'document';
   const key=slug+'-'+crypto.createHash('sha256').update(file).digest('hex').slice(0,8);
-  const out=batch?path.join(outRoot,key):explicitOut||path.resolve(slug+'-b35-report');
+  const out=outRoot;
   const previousRun=path.join(out,'run.json');
   if(fs.existsSync(previousRun)){
    const previous=JSON.parse(fs.readFileSync(previousRun,'utf8'));
@@ -131,7 +130,19 @@ function main(argv){
  const engineFingerprint=validatorFingerprint();
  const options={staticOnly:!!a['static-only'],screenshots:a.screenshots,offline:!!a.offline,failOnWarning:!!a['fail-on-warning'],timeout:a.timeout,pages:a.pages,loadMode:a['load-mode'],fonts:fonts.map(({data,...metadata})=>metadata)};
  let code=0;const results=[];
- for(const job of jobs){
+ const evidenceRoot=path.join(outRoot,'failure-evidence');
+ protectOutput(evidenceRoot);
+ if(fs.existsSync(evidenceRoot)&&fs.lstatSync(evidenceRoot).isSymbolicLink())throw new Error('Failure evidence directory cannot be a symlink.');
+ fs.mkdirSync(outRoot,{recursive:true});
+ // Remove only evidence files named in the previous latest summary.
+ const previousLatest=path.join(outRoot,'latest.json');
+ if(fs.existsSync(previousLatest)){try{const previous=JSON.parse(fs.readFileSync(previousLatest,'utf8'));for(const item of previous.results||[]){if(!item.evidence||!/^failure-evidence\/[a-f0-9]{12}\.(png|jpe?g)$/.test(item.evidence))continue;const target=path.join(outRoot,item.evidence);protectOutput(target);if(fs.existsSync(target)&&!fs.lstatSync(target).isSymbolicLink())fs.unlinkSync(target);}}catch(error){throw new Error(`Cannot safely replace previous evidence: ${error.message}`);}}
+ function writeLatest(){
+  const summary={runTime:new Date().toISOString(),validatorVersion:pkg.version,sourceHash:engineFingerprint,inputs:files,pass:results.filter(r=>r.exitCode===0).length,fail:results.filter(r=>r.exitCode!==0).length,warning:results.reduce((n,r)=>n+r.warnings,0),failures:results.filter(r=>r.exitCode!==0).map(r=>({file:r.file,errors:r.errors,summary:r.errorSummary})),results};
+  const lines=['# Latest validation', '', `Run: ${summary.runTime}`, `Validator: ${summary.validatorVersion}`, `Source hash: ${summary.sourceHash}`, `Pass: ${summary.pass} · Fail: ${summary.fail} · Warnings: ${summary.warning}`, '', 'Inputs:', ...summary.inputs.map(f=>`- ${f}`), '', ...summary.failures.map(f=>`- ${f.file}: ${f.summary}`), '', 'Warnings:', ...summary.results.filter(r=>r.warningSummary).map(r=>`- ${r.file}: ${r.warningSummary}`)];
+  for(const [name,content] of [['latest.json',JSON.stringify(summary,null,2)+'\n'],['latest.md',lines.join('\n')+'\n']]){const target=path.join(outRoot,name),tmp=target+'.tmp';fs.writeFileSync(tmp,content);fs.renameSync(tmp,target);}
+ }
+ try { for(const job of jobs){
   const startedAt=new Date().toISOString(),directory=fs.mkdtempSync(path.join(os.tmpdir(),'hia-validation-'));
   try{
   const resolved=path.join(directory,'resolved-config.json');fs.writeFileSync(resolved,JSON.stringify(job.config,null,2)+'\n');
@@ -165,20 +176,24 @@ function main(argv){
   fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
   const incomplete=child.error||child.signal||child.status===2||![0,1,2].includes(child.status)||(!a['static-only']&&report.browser.status!=='COMPLETED')||report.browser.status==='BLOCKED';
   const status=incomplete?2:report.summary.errors||(a['fail-on-warning']&&report.summary.warnings)?1:0;
-  code=Math.max(code,status);const entry={file:job.file,profile:job.profile,exitCode:status,errors:report.summary.errors,warnings:report.summary.warnings,browser:report.browser.status,report:path.join(job.out,'report.md')};results.push(entry);
-  const run=finalise({directory,historyDirectory,logPath,report,entry,input:job.input,options,startedAt,engineFingerprint});
-  // Stage each run in a fresh directory: a crashed child must never reuse a
-  // previous successful report or include its screenshots as fresh evidence.
-  function copy(source,target){for(const item of fs.readdirSync(source,{withFileTypes:true})){const from=path.join(source,item.name),to=path.join(target,item.name);protectOutput(to);if(item.isDirectory()){fs.mkdirSync(to,{recursive:true});copy(from,to);}else fs.copyFileSync(from,to);}}
-  fs.mkdirSync(job.out,{recursive:true});copy(directory,job.out);
-  entry.runId=run.runId;entry.documentVersion=run.documentVersion;entry.archive=run.archive;
-  console.log(`${status===2?'INCOMPLETE':status===1?'FINDINGS':'CHECKS COMPLETED'}: ${entry.errors} errors, ${entry.warnings} warnings; ${entry.report}`);
-  if(run.archive)console.log(`Run ${run.runId}; document v${run.documentVersion}; history: ${run.archive}`);
+  code=Math.max(code,status);const entry={file:job.file,profile:job.profile,exitCode:status,errors:report.summary.errors,warnings:report.summary.warnings,browser:report.browser.status,warningSummary:(report.findings||[]).filter(f=>f.severity==='warning').map(f=>`${f.rule||'warning'}: ${f.message||''}`).slice(0,10).join('; ')};results.push(entry);
+  entry.errorSummary=(report.findings||[]).filter(f=>f.severity==='error').map(f=>`${f.rule||'error'}: ${f.message||''}`).slice(0,10).join('; ') || (status===2 ? (report.browser.reason||'Validation incomplete') : status===1 ? (report.findings||[]).filter(f=>f.severity==='warning').map(f=>`${f.rule||'warning'}: ${f.message||''}`).slice(0,10).join('; ') : '');
+  if(status!==0 && job.profile==='html' && a.screenshots && Array.isArray(report.screenshots) && report.screenshots.length){
+   const shot=report.screenshots[0],source=path.resolve(directory,shot.file);
+   if(inside(source,canonical(directory))&&fs.existsSync(source)){
+    const name=crypto.createHash('sha256').update(job.file).digest('hex').slice(0,12)+path.extname(source);
+    const target=path.join(evidenceRoot,name);protectOutput(target);fs.mkdirSync(evidenceRoot,{recursive:true});fs.copyFileSync(source,target,fs.constants.COPYFILE_EXCL);entry.evidence=`failure-evidence/${name}`;
+   }
+  }
+  console.log(`${status===2?'INCOMPLETE':status===1?'FINDINGS':'CHECKS COMPLETED'}: ${entry.errors} errors, ${entry.warnings} warnings`);
   }finally{fs.rmSync(directory,{recursive:true,force:true});}
- }
- if(batch){fs.mkdirSync(outRoot,{recursive:true});fs.writeFileSync(path.join(outRoot,'batch-summary.json'),JSON.stringify({version:pkg.version,exitCode:code,results},null,2)+'\n');console.log(`Batch summary: ${path.join(outRoot,'batch-summary.json')}`);}
+ }} catch(error){code=2;results.push({file:'<execution>',exitCode:2,errors:1,warnings:0,errorSummary:error.message});} finally {writeLatest();}
  process.exitCode=code;
 }
-function run(argv=process.argv.slice(2)){try{main(argv);}catch(error){console.error(`hia-html-validator: ${error.message}`);process.exitCode=2;}}
+function run(argv=process.argv.slice(2)){try{main(argv);}catch(error){
+ console.error(`hia-html-validator: ${error.message}`);process.exitCode=2;
+ // Only write an invocation-failure summary to an explicitly requested safe output.
+ try{const i=argv.indexOf('--out');if(i<0||!argv[i+1])return;const out=path.resolve(argv[i+1]);const inputArgs=argv.filter(v=>!v.startsWith('-')).map(v=>path.resolve(v));for(const n of ['latest.json','latest.md'])protect(path.join(out,n),inputArgs);fs.mkdirSync(out,{recursive:true});const summary={runTime:new Date().toISOString(),validatorVersion:pkg.version,sourceHash:validatorFingerprint(),inputs:argv.filter(v=>/\.html?$/i.test(v)),pass:0,fail:1,warning:0,failures:[{file:'<invocation>',summary:error.message}],results:[]};fs.writeFileSync(path.join(out,'latest.json'),JSON.stringify(summary,null,2)+'\n');fs.writeFileSync(path.join(out,'latest.md'),`# Latest validation\n\nRun: ${summary.runTime}\nValidator: ${summary.validatorVersion}\nSource hash: ${summary.sourceHash}\nInputs: ${summary.inputs.join(', ')}\nPass: 0 · Fail: 1 · Warnings: 0\n\n- ${error.message}\n`);}catch(writeError){console.error(`Could not write failure summary: ${writeError.message}`);}
+}}
 if(require.main===module)run();
 module.exports={parse,enumerate,playwrightCli,run};

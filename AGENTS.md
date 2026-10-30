@@ -65,17 +65,9 @@ Use the integrity file when supplied to check the tarball for accidental corrupt
 6. Preserve the default browser stage and screenshots unless the request/environment warrants another choice. `--static-only` is not rendered validation. `--no-screenshots` still runs browser checks but omits image evidence. One run uses one viewport; run additional viewports when required.
 7. Use `--offline` when the user requires it, and report missing assets/fallback-font limits. If trust is unresolved, offline is not sufficient containment.
 8. Record the exit status. Inspect the fresh report's timestamp/input/profile, `browser.status`, coverage and counts, not just a previous report or a terminal success message.
-9. For batches, read each result in `batch-summary.json`. A batch can contain both successful and incomplete files.
+9. For batches, read each result in `latest.json`. A batch can contain both successful and incomplete files.
 
-Primary-CLI runs automatically preserve reports and screenshots under
-`.hia-html-validator/` in the working directory. Read `run.json`, `checks.jsonl`
-and `change-review.json`; use the same `--history` root to retain comparisons.
-See [docs/HISTORY.md](docs/HISTORY.md). History includes successful validations,
-but `CHECKS_PASSED` is not manual approval, and `PREFLIGHT_PASSED` supplies no
-browser assurance. Never fabricate review identities, decisions or evidence.
-When explicitly asked to record a review, copy the run's draft outside the
-archive, fill actual observations and use `record-review`; preserve archived
-evidence and prior assertions. The legacy lesson command also records history.
+Primary CLI runs overwrite `latest.json` and `latest.md` in the selected output directory. They retain minimal failure evidence only; generated intermediate reports and images are temporary and cleaned. Existing historical archives are not modified. Review warnings using their latest summary and validate trusted inputs only.
 
 Exit interpretation:
 
@@ -86,7 +78,7 @@ Exit interpretation:
 
 ## Read and communicate findings
 
-Use report.json for precise evidence and report.md for readable presentation. Check rule, severity, page/source/runtime location, reveal state, selector, measurements, expected result, suggestedAction, confidence, verification and constraints when supplied. Fields vary across rule generations; inspect evidence rather than inventing missing details.
+Use latest.json for results and latest.md for readable summaries. Check rule, severity, page/source/runtime location, reveal state, selector, measurements, expected result, suggestedAction, confidence, verification and constraints when supplied. Fields vary across rule generations; inspect evidence rather than inventing missing details.
 
 For each actionable finding, state:
 
