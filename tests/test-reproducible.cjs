@@ -34,7 +34,7 @@ try{
   const next=validate(doc,'changed font report',['--font-manifest',manifest,'--no-screenshots']);
   assert.equal(next.run.documentVersion,original.run.documentVersion);assert.notEqual(next.run.renderingFingerprint,original.run.renderingFingerprint);assert.equal(next.run.changes.renderingChanged,true);
  });
- const lesson=fixture('scoped lesson.html',`<!doctype html><html><meta charset="utf-8"><style>body{margin:0}.slide{display:none;width:960px;height:540px}.slide.active{display:block}.hdr{height:40px}.body{height:400px}.nav{position:fixed;bottom:0}[data-step]{visibility:hidden}[data-step].visible{visibility:visible}</style><body>
+ const lesson=fixture('scoped lesson.html',`<!doctype html><html><meta charset="utf-8"><style>body{margin:0}.slide{display:none;width:960px;height:540px}.slide.active{display:block}.hdr{height:40px}.body{height:400px}.nav{position:fixed;bottom:5px;left:50%;transform:translateX(-50%)}[data-step]{visibility:hidden}[data-step].visible{visibility:visible}</style><body>
  <section class="slide active" id="first"><header class="hdr">First</header><div class="body"><div style="width:3000px">Unselected overflow</div></div></section>
  <section class="slide" id="second"><header class="hdr">Second</header><div class="body"><p>Initial text.</p><p data-step="1">One explanation.</p><p data-step="2">Final explanation.</p></div></section>
  <section class="slide" id="third"><header class="hdr">Third</header><div class="body">More content.</div></section>
