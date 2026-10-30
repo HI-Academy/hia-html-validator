@@ -338,6 +338,9 @@ edit inputs or fabricate reviewer approvals.
 | `B35-CANVAS-001` | Slide/panel overflow, clipping and internal scrolling | Automated |
 | `B35-CANVAS-002` | Visible panels remain inside all four slide edges | Automated |
 | `B35-CANVAS-003` | Navigator does not cover visible teaching content | Automated |
+| `B35-NAV-001` | Visible navigator stays within the viewport at bottom centre | Automated rendered geometry |
+| `B35-NAV-002` | A reserved footer separates navigation from the complete teaching body | Automated rendered geometry |
+| `B35-NAV-003` | Page and reveal counters fit on one line without clipping | Automated text geometry |
 | `B35-CANVAS-004` | Unexpected sibling-panel collisions | Automated |
 | `B35-CANVAS-005` | Mostly-empty large cards and isolated short lines | Heuristic warning |
 | `B35-ORDER-001` | No answer element is visible at the initial reveal | Automated |
@@ -800,3 +803,14 @@ Lesson-mode browser traversal captures unscaled frame geometry at every settled 
 Repair the shared template rather than adjusting each page to its current amount of text. Use a different documented frame variant if a longer question genuinely requires more room; do not shrink type, clip content or remove working to force equal heights. DOM geometry is not visual acceptance. Inspect normal-size initial/final screenshots after repair.
 
 Focused regressions: `node tests/test-layout-stability.cjs` (also included in `npm test`).
+
+
+## Bottom navigation and reserved footer
+
+Lesson mode checks `B35-NAV-001`–`003` on every audited reveal, including later pages. The navigator is the configured `selectors.navigator` (default `.nav`). It must be visible within the viewport, centred horizontally (default tolerance 16 CSS px), and within 24 CSS px of the viewport bottom. This detects a top-right navigator even when it covers no recognised panel.
+
+Reserve a footer below the active slide's complete teaching body (`selectors.body`), with at least 2 CSS px clearance (subject to the existing geometry tolerance). If no body exists, the whole slide is the teaching area. A footer can be outside the slide or inside it below a shorter teaching body; no particular HTML filename, slide dimensions or fixed 42px footer is required. Empty space on an early reveal is not reserved footer space. Existing `B35-CANVAS-003` content-overlap checks still apply.
+
+`B35-NAV-003` inspects visible text geometry in page/step counters for multiple lines or ink extending outside the counter or navigator. Default counter selectors are `#counter, #step, #step-badge, [data-step-counter]`; nested inline markup on the same line is allowed. Counter values still have their separate `B35-RUNTIME-001` checks.
+
+These are default lesson errors, not screenshot acceptance or a general-web-page navigation requirement. The `navigationLayout` configuration holds `enabled`, `centreTolerancePx`, `maximumBottomGapPx`, `minimumClearancePx` and `counterSelectors`. An explicit `enabled:false` omits these three checks only; reports retain the resolved configuration and existing overlap checks remain enabled. Revalidate at intended viewports and inspect the screenshots; this rule does not establish touch-target accessibility or colour contrast.

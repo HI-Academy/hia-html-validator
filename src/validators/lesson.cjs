@@ -363,8 +363,47 @@ function runtimeAuditFunction(config) {
     if (Object.values(outside).some((value) => value > tolerance)) push("B35-CANVAS-002", "error", "Visible panel extends beyond a slide edge.", element, outside);
   }
 
+  if ((!nav || !visible(nav)) && config.navigationLayout?.enabled !== false) {
+    push("B35-NAV-001", "error", "Navigator must be visible within the viewport at bottom centre.", nav,
+      { navigatorVisible: false });
+  }
   if (nav && visible(nav)) {
     const navRect = nav.getBoundingClientRect();
+    const layout = config.navigationLayout || {};
+    if (layout.enabled !== false) {
+      const centreOffsetPx = Math.abs((navRect.left + navRect.right) / 2 - innerWidth / 2);
+      const bottomGapPx = innerHeight - navRect.bottom;
+      const insideViewport = navRect.left >= -tolerance && navRect.right <= innerWidth + tolerance
+        && navRect.top >= -tolerance && navRect.bottom <= innerHeight + tolerance;
+      if (!insideViewport || centreOffsetPx > (layout.centreTolerancePx ?? 16)
+        || bottomGapPx > (layout.maximumBottomGapPx ?? 24)) {
+        push("B35-NAV-001", "error", "Navigator must be visible within the viewport at bottom centre.", nav,
+          { centreOffsetPx, bottomGapPx, insideViewport, viewport: { width: innerWidth, height: innerHeight } });
+      }
+      // Reserve a footer below the complete teaching body, not merely below
+      // whichever panels happen to be visible on an early reveal.
+      const bodies = [...slide.querySelectorAll(config.selectors.body)].filter(visible);
+      const teachingBottomPx = Math.max(...(bodies.length ? bodies.map(body => body.getBoundingClientRect().bottom) : [slideRect.bottom]));
+      const clearancePx = navRect.top - teachingBottomPx;
+      if (clearancePx + tolerance < (layout.minimumClearancePx ?? 2)) {
+        push("B35-NAV-002", "error", "Navigator needs a reserved footer below the teaching area.", nav,
+          { teachingBottomPx, navigatorTopPx: navRect.top, clearancePx, minimumClearancePx: layout.minimumClearancePx ?? 2 });
+      }
+      for (const counter of nav.querySelectorAll(layout.counterSelectors || "#counter, #step, #step-badge, [data-step-counter]")) {
+        if (!visible(counter)) continue;
+        const range = document.createRange(); range.selectNodeContents(counter);
+        const lines = [...range.getClientRects()].filter(rect => rect.width > 0.5 && rect.height > 0.5);
+        const box = counter.getBoundingClientRect();
+        const firstLine = lines[0];
+        const wrapped = firstLine && lines.some(rect => Math.min(rect.bottom, firstLine.bottom) - Math.max(rect.top, firstLine.top) <= 0.5);
+        const outsideCounter = lines.some(rect => rect.left < box.left - tolerance || rect.right > box.right + tolerance
+          || rect.top < box.top - tolerance || rect.bottom > box.bottom + tolerance);
+        const outsideNavigator = lines.some(rect => rect.left < navRect.left - tolerance || rect.right > navRect.right + tolerance
+          || rect.top < navRect.top - tolerance || rect.bottom > navRect.bottom + tolerance);
+        if (wrapped || outsideCounter || outsideNavigator) push("B35-NAV-003", "error", "Navigator counters must fit on one line without clipping.", counter,
+          { wrapped: Boolean(wrapped), outsideCounter, outsideNavigator, text: counter.textContent.trim() });
+      }
+    }
     for (const element of panels) {
       if (element === nav || element.contains(nav) || nav.contains(element)) continue;
       const hit = overlap(navRect, element.getBoundingClientRect());

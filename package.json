@@ -46,7 +46,8 @@
     "test:history": "node tests/test-history.cjs",
     "test:structure": "node tests/test-structure.cjs",
     "test:package": "node tests/test-package.cjs",
-    "package": "node scripts/package.cjs"
+    "package": "node scripts/package.cjs",
+    "test:navigation": "node tests/test-navigation-layout.cjs"
   },
   "dependencies": {
     "playwright": "1.62.1"

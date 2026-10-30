@@ -1,5 +1,12 @@
 {
   "schemaVersion": 1,
+  "navigationLayout": {
+    "enabled": true,
+    "centreTolerancePx": 16,
+    "maximumBottomGapPx": 24,
+    "minimumClearancePx": 2,
+    "counterSelectors": "#counter, #step, #step-badge, [data-step-counter]"
+  },
   "textContrast": {
     "enabled": true,
     "decorativeSelectors": ".hi-wm,.watermark,.watermark-text"
