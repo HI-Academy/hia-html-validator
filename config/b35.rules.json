@@ -134,6 +134,7 @@
   },
   "visualReview": {
     "boxReadingOrderEnabled": true,
+    "groupedRevealEnabled": true,
     "boxReadingOrderRowTolerancePx": 18,
     "questionPartsEnabled": true,
     "questionPartSelectors": ".prompt,.practice-question,[data-b35-question],[data-b35-question-parts]",

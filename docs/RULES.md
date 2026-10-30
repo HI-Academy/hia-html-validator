@@ -347,6 +347,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-ORDER-002` | Identified question/answer pairs need a distinct question-only state, including shared revealing parents | Automated bounded structure/visibility check |
 | `B35-ORDER-003` | Previously hidden answers must reset on available previous-page navigation, without a visible fade-out | DOM visibility check; explicit coverage limits |
 | `B35-ORDER-004` | Content boxes reveal in visual reading order: top to bottom, then left to right within a row | Rendered sequencing review warning |
+| `B35-ORDER-006` | Complete each recognised teaching group before revealing the next panel | Rendered grouping/reveal review warning |
 | `B35-TASK-001` | Semantically marked student-attempt cards use dark treatment; numbered task cards also have a numeric chip | Automated |
 | `B35-TASK-002` | Question and answer treatment remains distinguishable | Automated |
 | `B35-MATH-001` | No legacy `.frac` remains after runtime transformation | Automated |
@@ -814,3 +815,12 @@ Reserve a footer below the active slide's complete teaching body (`selectors.bod
 `B35-NAV-003` inspects visible text geometry in page/step counters for multiple lines or ink extending outside the counter or navigator. Default counter selectors are `#counter, #step, #step-badge, [data-step-counter]`; nested inline markup on the same line is allowed. Counter values still have their separate `B35-RUNTIME-001` checks.
 
 These are default lesson errors, not screenshot acceptance or a general-web-page navigation requirement. The `navigationLayout` configuration holds `enabled`, `centreTolerancePx`, `maximumBottomGapPx`, `minimumClearancePx` and `counterSelectors`. An explicit `enabled:false` omits these three checks only; reports retain the resolved configuration and existing overlap checks remain enabled. Revalidate at intended viewports and inspect the screenshots; this rule does not establish touch-target accessibility or colour contrast.
+
+
+## Complete teaching groups before switching columns
+
+`B35-ORDER-006` warns when a later teaching panel (including its frame and title) first appears while a preceding panel still has hidden working. It infers side-by-side flex/grid groups where at least two sibling panels each contain at least two recognised working elements: `.step-solution`, `.practice-answer`, `.work`, `[data-role="answer"]`, `[data-b35-content-role="solution"]` or `[data-b35-reveal-role="working"|"answer"]`. It uses rendered positions and effective reveal steps inherited from ancestors. Finish a group top to bottom before moving to the next group from left to right. Reveal the panel with its first substantive step rather than requiring an empty-frame click.
+
+`B35-ORDER-004` now uses the same group boundaries when comparing working boxes, so a correctly completed left panel is not incorrectly forced into row-by-row interleaving with the right panel. Outside these inferred groups its ordinary top-to-bottom/left-to-right geometry check remains in place.
+
+Intentional matching-row comparisons can declare `data-b35-reveal-order="rows"` and a nonempty, concrete `data-b35-reveal-order-reason` on their shared layout; ordinary row-order checks still run. Original question figures and question containers retain their existing early-appearance allowance. Independent-panel annotations remain supported. Stacked mobile layouts do not imply horizontal group completion. `visualReview.groupedRevealEnabled:false` omits inferred grouping and its warning; `boxReadingOrderEnabled:false` omits the entire reading-order family. These bounded DOM checks cannot infer every semantic dependency or author intent; inspect every reveal after repairs.

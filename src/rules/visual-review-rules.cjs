@@ -273,10 +273,61 @@ function auditVisualReview(config) {
           return {node,rect,step,role};
         }).filter(item=>item.rect.width>=20&&item.rect.height>=20);
       const rowTolerance=(settings.boxReadingOrderRowTolerancePx??18)*scale;
-      candidates.sort((a,b)=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance
-        ? a.rect.left-b.rect.left : a.rect.top-b.rect.top);
+      const spatial=(a,b)=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance ? a.rect.left-b.rect.left : a.rect.top-b.rect.top;
+      const gate=node=>{
+        let step=0;
+        for(let parent=node;parent&&parent!==slide.parentElement;parent=parent.parentElement){
+          const value=Number(parent.getAttribute('data-step'));if(Number.isInteger(value)&&value>step)step=value;
+        }
+        return step;
+      };
+      const excluded='[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"],[data-b35-diagram-role="question"],[data-role="question"],.practice-question,.challenge-box';
+      const workSelector='.step-solution,.practice-answer,.work,[data-role="answer"],[data-b35-content-role="solution"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]';
+      const work=[...slide.querySelectorAll(workSelector)].filter(node=>!node.closest(excluded));
+      const containers=new Set();
+      if(settings.groupedRevealEnabled!==false)for(const node of work)for(let parent=node.parentElement;parent&&parent!==slide;parent=parent.parentElement){
+        if(parent.children.length>1&&/^(grid|inline-grid|flex|inline-flex)$/.test(getComputedStyle(parent).display))containers.add(parent);
+      }
+      const groups=[];
+      for(const container of containers){
+        if(container.closest(excluded))continue;
+        const rowMode=container.getAttribute('data-b35-reveal-order')==='rows'&&Boolean(container.getAttribute('data-b35-reveal-order-reason')?.trim());
+        if(rowMode)continue;
+        const columns=[...container.children].map(node=>({node,rect:boxFor(node),work:work.filter(item=>node.contains(item))}))
+          .filter(item=>item.rect.width>=20&&item.rect.height>=20&&item.work.length>=2);
+        // Only distinct horizontal teaching groups, not stacked/mobile content
+        // or a question figure followed by a solution, imply column completion.
+        if(columns.length<2||!columns.some((a,i)=>columns.slice(i+1).some(b=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance&&Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)<=2*scale)))continue;
+        columns.sort(spatial);groups.push({container,columns});
+      }
+      groups.sort((a,b)=>a.container.contains(b.container)?-1:b.container.contains(a.container)?1:0);
+      candidates.sort((a,b)=>{
+        for(const group of groups){
+          const ai=group.columns.findIndex(column=>column.node.contains(a.node)),bi=group.columns.findIndex(column=>column.node.contains(b.node));
+          if(ai>=0&&bi>=0&&ai!==bi)return ai-bi;
+        }
+        return spatial(a,b);
+      });
       const currentBeat=Math.max(0,...[...slide.querySelectorAll('[data-step]')]
         .filter(visible).map(node=>Number(node.getAttribute('data-step'))).filter(Number.isFinite));
+      for(const group of groups)for(let i=1;i<group.columns.length;i++){
+        const later=group.columns[i],start=gate(later.node);
+        if(!visible(later.node)||start!==currentBeat)continue;
+        const earlier=group.columns.slice(0,i).find(column=>column.work.some(node=>gate(node)>start&&!visible(node)));
+        if(!earlier)continue;
+        const pending=earlier.work.filter(node=>gate(node)>start&&!visible(node));
+        review('B35-ORDER-006','A later teaching group appears before the preceding group has finished.',later.node,{
+          kind:'teaching-group-interleaving',groupSelector:pathFor(group.container),
+          earlier:{selector:pathFor(earlier.node),lastWorkingStep:Math.max(...earlier.work.map(gate))},
+          later:{selector:pathFor(later.node),firstStep:start},pending:pending.map(node=>({selector:pathFor(node),step:gate(node)}))
+        });
+        Object.assign(issues.at(-1),{
+          expected:'Finish a teaching group from top to bottom before opening the next group from left to right.',
+          suggestedAction:'Reveal each panel with its first substantive step, complete its working, then open the next panel. For an intentional row-by-row comparison, declare data-b35-reveal-order="rows" and a concrete data-b35-reveal-order-reason on the shared layout.',
+          verification:['Inspect every reveal, including panel frames and headings.','Preserve original question figures, all mathematical content and the final conclusion.'],
+          confidence:'Side-by-side flex/grid groups containing at least two recognised working elements; semantic dependencies outside these bounds require review.'
+        });
+      }
       const seen=[];
       for(const later of candidates){
         if(later.role==='question')continue;
@@ -289,7 +340,7 @@ function auditVisualReview(config) {
           });
           const finding=issues.at(-1);
           if(finding?.rule==='B35-ORDER-004')Object.assign(finding,{
-            expected:'Content boxes reveal from top to bottom, and from left to right within the same row.',
+            expected:'Finish each recognised teaching group top to bottom, then proceed left to right; otherwise follow top-to-bottom, left-to-right box order.',
             impact:'A later box can appear before the preceding explanation or task.',
             suggestedAction:unknown ? 'Confirm the diagram purpose. Mark original question figures data-b35-diagram-role="question", or worked/answer figures data-b35-diagram-role="solution" and align their reveal steps. Do not automatically hide unclassified figures.' : 'Adjust the reveal steps to follow the visual reading order. Original question figures may be marked data-b35-diagram-role="question"; genuinely independent panels may use data-b35-order-independent.',
             confidence:'Rendered box positions and declared data-step ancestry; semantic teaching dependencies are not inferred.',

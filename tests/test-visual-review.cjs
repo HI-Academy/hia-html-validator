@@ -91,6 +91,19 @@ async function main(){
     await check('nested label reveal does not hide solution card',diagramOrder('data-b35-diagram-role="solution"').replace('Diagram</div>','Diagram<span data-step="1" style="visibility:hidden">Answer label</span></div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004')));
     await check('solution diagram after working passes',diagramOrder('data-b35-diagram-role="solution" data-step="2" style="visibility:hidden"'),none('B35-ORDER-004'));
     await check('nested reveal step is inherited',wrap('<div class="three"><div data-step="1" style="visibility:hidden"><div class="qcard">Left</div></div><div class="note">Right</div></div>'),items=>assert.ok(items.some(x=>x.rule==='B35-ORDER-004')));
+    const grouped=(beat, left=[1,3,5,7], right=[2,4,6,8], attributes='')=>{
+      const column=(id,steps)=>`<div id="${id}" data-step="${steps[0]}" style="visibility:${beat>=steps[0]?'visible':'hidden'}"><h3>${id}</h3>${steps.slice(1).map((step,i)=>`<div class="step-solution" data-step="${step}" style="height:40px;visibility:${beat>=step?'visible':'hidden'}">Reason ${i+1}</div>`).join('')}</div>`;
+      return wrap(`<div id="teaching-groups" ${attributes} style="display:grid;grid-template-columns:400px 400px;gap:20px">${column('left',left)}${column('right',right)}</div>`);
+    };
+    await check('next panel frame before left working finishes warns',grouped(2),xs=>{const f=xs.find(x=>x.rule==='B35-ORDER-006');assert.equal(f.evidence.earlier.lastWorkingStep,7);assert.equal(f.evidence.later.firstStep,2);assert.ok(f.suggestedAction&&f.verification);});
+    await check('interleaved right working still violates group order',grouped(4),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004')));
+    await check('group warning is limited to the panel first appearance',grouped(4),none('B35-ORDER-006'));
+    for(const beat of [1,2,3,4,5,6])await check('left complete then right passes at beat '+beat,grouped(beat,[1,1,2,3],[4,4,5,6]),xs=>assert.ok(!xs.some(x=>['B35-ORDER-004','B35-ORDER-006'].includes(x.rule))));
+    await check('reasoned row-by-row comparison remains allowed',grouped(4,undefined,undefined,'data-b35-reveal-order="rows" data-b35-reveal-order-reason="Compare the matching method on each row."'),xs=>assert.ok(!xs.some(x=>['B35-ORDER-004','B35-ORDER-006'].includes(x.rule))));
+    await check('row marker without a reason does not waive sequencing',grouped(2,undefined,undefined,'data-b35-reveal-order="rows"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-006')));
+    await check('mobile stacked groups retain ordinary vertical ordering',grouped(2).replace('grid-template-columns:400px 400px','grid-template-columns:400px'),none('B35-ORDER-006'));
+    await check('given question group is not postponed',grouped(2).replace('id="left"','id="left" data-role="question"'),none('B35-ORDER-006'));
+    await check('independent groups retain their declared exception',grouped(2,undefined,undefined,'data-b35-order-independent'),none('B35-ORDER-006'));
     await check('inline question subparts warn',wrap('<p class="prompt">Find (a) the area, (b) the perimeter, (c) the ratio.</p>'),xs=>{const f=xs.find(x=>x.rule==='B35-LAYOUT-006');assert.deepEqual(f.evidence.labelsWithoutOwnLine,['a','b','c']);assert.ok(f.suggestedAction&&f.verification&&f.constraints);});
     await check('explicit BR before every part passes',wrap('<p class="prompt">Find:<br>(a) the area<br>(b) the perimeter</p>'),none('B35-LAYOUT-006'));
     await check('stem still needs a break before first task',wrap('<p class="prompt">Find (a) the area<br>(b) the perimeter</p>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-LAYOUT-006').evidence.labelsWithoutOwnLine,['a']));
