@@ -29,6 +29,15 @@ async function main(){
     await check('question-first does not bypass box order',wrap(row).replace('Visual review regressions','Try It First'),items=>assert.ok(items.some(x=>x.rule==='B35-ORDER-004')));
     await check('order warning is limited to first appearance',wrap('<div class="three"><div class="qcard" data-step="1">First explanation</div><div class="note">Second panel</div></div>'),none('B35-ORDER-004'));
     await check('independent panels can opt out',wrap('<div data-b35-order-independent>'+row+'</div>'),none('B35-ORDER-004'));
+    const diagramOrder=role=>wrap('<div class="step-solution" data-step="1" style="visibility:hidden">First explanation</div><div class="visual-card" '+role+'>Diagram</div>');
+    await check('solution diagram below hidden working warns',diagramOrder('data-b35-diagram-role="solution"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004'&&x.evidence.kind==='box-reading-order')));
+    await check('original question diagram may appear first',diagramOrder('data-b35-diagram-role="question"'),none('B35-ORDER-004'));
+    await check('unclassified diagram requires purpose review',diagramOrder(''),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004'&&x.evidence.kind==='diagram-role-review')));
+    await check('invalid diagram role cannot bypass order',diagramOrder('data-b35-diagram-role="typo"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004')));
+    await check('figure inside question card is a given',wrap('<div class="step-solution" data-step="1" style="visibility:hidden">Working</div><div class="challenge-box"><div class="visual-card">Given figure</div></div>'),none('B35-ORDER-004'));
+    await check('explicit solution overrides question location',wrap('<div class="step-solution" data-step="1" style="visibility:hidden">Working</div><div class="challenge-box"><div class="visual-card" data-b35-diagram-role="solution">Solution</div></div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004')));
+    await check('nested label reveal does not hide solution card',diagramOrder('data-b35-diagram-role="solution"').replace('Diagram</div>','Diagram<span data-step="1" style="visibility:hidden">Answer label</span></div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-004')));
+    await check('solution diagram after working passes',diagramOrder('data-b35-diagram-role="solution" data-step="2" style="visibility:hidden"'),none('B35-ORDER-004'));
     await check('nested reveal step is inherited',wrap('<div class="three"><div data-step="1" style="visibility:hidden"><div class="qcard">Left</div></div><div class="note">Right</div></div>'),items=>assert.ok(items.some(x=>x.rule==='B35-ORDER-004')));
     await check('inline question subparts warn',wrap('<p class="prompt">Find (a) the area, (b) the perimeter, (c) the ratio.</p>'),xs=>{const f=xs.find(x=>x.rule==='B35-LAYOUT-006');assert.deepEqual(f.evidence.labelsWithoutOwnLine,['a','b','c']);assert.ok(f.suggestedAction&&f.verification&&f.constraints);});
     await check('explicit BR before every part passes',wrap('<p class="prompt">Find:<br>(a) the area<br>(b) the perimeter</p>'),none('B35-LAYOUT-006'));
