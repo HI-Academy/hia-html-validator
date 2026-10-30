@@ -8,6 +8,25 @@ This is a plain CommonJS/Node.js command-line package. There is no compilation s
 
 The child runner is either `src/validators/lesson.cjs` (compatible B35 lesson navigation and reveals) or `src/validators/html.cjs` (one current document state). The runners call the browser audit functions in `src/rules/`. These functions must remain self-contained when serialized into the browser by Playwright: do not add Node imports or references to module-local variables inside the evaluated function.
 
+`src/core/rendering.cjs` owns runtime-page parsing/metadata, explicit file/memory
+loading, local font-manifest validation and bounded platform-font evidence.
+Page-scoped lesson runs retain the DOM, navigate through preceding states without
+running their layout audits, and omit source-wide/page-pair/backward re-entry
+checks. Their successful history baselines are independent of full-deck runs.
+Font manifests register FontFace objects in the isolated browser run; no OS font
+installation, network download or input rewriting occurs. Browser version and
+supplied font-file metadata contribute to a rendering fingerprint.
+
+The CLI stages each run in a fresh temporary directory before publishing the
+latest reports. `src/core/history.cjs` fingerprints the HTML, resolved settings,
+validator implementation and saved evidence, archives unique runs, appends
+validation/check logs, and generates comparisons against successful browser
+baselines. A short exclusive lock protects history numbering and appends.
+Separate review assertions bind exact run/evidence fingerprints without
+changing automated findings or rule-specific approval contracts. See
+[history](HISTORY.md). The legacy lesson source command uses the same layer and
+forces the lesson profile; internal profile runners remain focused on audits.
+
 All lesson browser audits and page-pair snapshots support both `.active` slide markers and display-based navigation. When no slide carries the marker, they inspect the displayed slide with nonzero geometry, excluding hidden ancestors. Existing document-mode behavior is preserved. `tests/test-display-slides.cjs` verifies that known defects remain detectable across both navigation formats and on later slides.
 
 `config/b35.rules.json` is the canonical default configuration. User overrides merge over these defaults through the primary CLI; arrays replace arrays. Rule IDs, selectors, finding evidence, exit codes and report schema are unchanged by the 1.6.1 directory reorganisation.

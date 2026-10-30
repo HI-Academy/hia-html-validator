@@ -1,4 +1,5 @@
 node_modules/
+.hia-html-validator/
 dist/
 test-results/
 playwright-report/

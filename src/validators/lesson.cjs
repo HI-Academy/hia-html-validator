@@ -4,17 +4,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const { pathToFileURL } = require("node:url");
 const { auditSvgFormulas } = require("../rules/svg-formula-rules.cjs");
 const { auditFormulaStyles } = require("../rules/formula-style-rules.cjs");
 const { auditVisualModels } = require("../rules/visual-model-rules.cjs");
 const { auditVisualReview } = require("../rules/visual-review-rules.cjs");
 const { auditComplementaryChecks } = require("../rules/complementary-rules.cjs");
 const { auditTextContrast } = require("../rules/text-contrast-rules.cjs");
+const { auditPresentation } = require("../rules/presentation-rules.cjs");
 const { capturePagePairState, auditPagePairs } = require("../rules/page-pair-rules.cjs");
 const { auditLessonReusability } = require("../rules/reusability-rules.cjs");
 const { captureAnswerSequence, observeAnswerSequence, auditAnswerReentry } = require("../rules/answer-sequence-rules.cjs");
-const { configuration } = require("../core/cli-support.cjs");
+const { configuration, coverage } = require("../core/cli-support.cjs");
+const { parsePages, readFontManifest, loadDocument, fontEvidence, captureLessonState } = require("../core/rendering.cjs");
 
 const MANUAL_GATES = [
   ["source-fidelity", "Source fidelity, wording, mathematics, answers and diagrams checked against the authoritative source."],
@@ -43,6 +44,9 @@ function parseArgs(argv) {
     if (!args.file && !value.startsWith("--")) args.file = value;
     else if (value === "--config") args.config = argv[++i];
     else if (value === "--out") args.out = argv[++i];
+    else if (value === "--pages") args.pages = parsePages(argv[++i]);
+    else if (value === "--font-manifest") args.fontManifest = argv[++i];
+    else if (value === "--load-mode") args.loadMode = argv[++i];
     else if (value === "--static-only") args.staticOnly = true;
     else if (value === "--no-screenshots") args.screenshots = false;
     else if (value === "--offline") args.offline = true;
@@ -477,6 +481,9 @@ async function runBrowserAudit(context) {
   const pagePairStates = [];
   const reusabilityFindingKeys = new Set();
   const answerFindingKeys = new Set(), questionHistory = new Set(), answerBaselines = new Map();
+  const selectedPages = context.args.pages || null, fonts = readFontManifest(context.args.fontManifest);
+  const fontEnvironments = [], selectedVisited = new Set();
+  let navigatedStates = 0, runtimeCount = null;
   const screenshotDir = path.join(context.out, "screenshots");
   if (context.args.screenshots) fs.mkdirSync(screenshotDir, { recursive: true });
   try {
@@ -491,10 +498,7 @@ async function runBrowserAudit(context) {
     page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
     page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("requestfailed", (request) => failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || "request failed" }));
-    await page.goto(pathToFileURL(context.file).href, { waitUntil: "load", timeout: 15000 });
-    await page.evaluate(async () => {
-      if (document.fonts?.ready) await Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, 5000))]);
-    });
+    await loadDocument(page, context.file, { loadMode: context.args.loadMode, fonts });
 
     let guard = 0;
     let previousKey = null;
@@ -505,43 +509,61 @@ async function runBrowserAudit(context) {
         await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => {})));
         await new Promise((resolve) => requestAnimationFrame(resolve));
       });
-      const result = await page.evaluate(runtimeAuditFunction, context.config);
-      result.issues.push(...await page.evaluate(auditSvgFormulas, context.config));
-      result.issues.push(...await page.evaluate(auditFormulaStyles, context.config));
-      result.issues.push(...await page.evaluate(auditVisualModels, context.config));
-      result.issues.push(...await page.evaluate(auditVisualReview, context.config));
-      result.issues.push(...await page.evaluate(auditComplementaryChecks, context.config));
-      result.issues.push(...await page.evaluate(auditTextContrast, context.config));
-      for(const item of await page.evaluate(auditLessonReusability, context.config)){
-        const key=JSON.stringify([item.rule,item.slide,item.selector,item.evidence.attribute,item.evidence.text]);
-        if(!reusabilityFindingKeys.has(key)){reusabilityFindingKeys.add(key);result.issues.push(item);}
+      const navigation = await page.evaluate(captureLessonState, context.config);
+      runtimeCount = navigation.runtimeSlides; navigatedStates++;
+      if (selectedPages?.some(n => n > runtimeCount)) throw new Error(`Requested page exceeds ${runtimeCount} runtime pages (numbering is after runtime compaction)`);
+      const selected = !selectedPages || selectedPages.includes(navigation.runtimeSlide);
+      const result = selected ? await page.evaluate(runtimeAuditFunction, context.config) : { metadata: navigation, issues: [] };
+      if (selected) {
+        if (!selectedVisited.has(navigation.runtimeSlide)) {
+          if (selectedPages && navigation.step !== 0) throw new Error(`Selected runtime page ${navigation.runtimeSlide} was not entered at reveal 0; coverage is incomplete`);
+          selectedVisited.add(navigation.runtimeSlide);
+        }
+        result.issues.push(...await page.evaluate(auditSvgFormulas, context.config));
+        result.issues.push(...await page.evaluate(auditFormulaStyles, context.config));
+        result.issues.push(...await page.evaluate(auditVisualModels, context.config));
+        result.issues.push(...await page.evaluate(auditVisualReview, context.config));
+        result.issues.push(...await page.evaluate(auditComplementaryChecks, context.config));
+        result.issues.push(...await page.evaluate(auditTextContrast, context.config));
+        result.issues.push(...await page.evaluate(auditPresentation, context.config));
+        for(const item of await page.evaluate(auditLessonReusability, context.config)){
+          const key=JSON.stringify([item.rule,item.slide,item.selector,item.evidence.attribute,item.evidence.text]);
+          if(!reusabilityFindingKeys.has(key)){reusabilityFindingKeys.add(key);result.issues.push(item);}
+        }
+        const meta = result.metadata;
+        const answerSnapshot = await page.evaluate(captureAnswerSequence, { config: context.config });
+        if (!answerBaselines.has(answerSnapshot.runtimeSlide) && answerSnapshot.runtimeSlide) answerBaselines.set(answerSnapshot.runtimeSlide, answerSnapshot);
+        for (const item of [...answerSnapshot.findings, ...observeAnswerSequence(answerSnapshot, questionHistory, context.config)]) {
+          const key = JSON.stringify([item.rule, item.runtimeSlide, item.selector]);
+          if (!answerFindingKeys.has(key)) { answerFindingKeys.add(key); result.issues.push(item); }
+        }
+        const stateKey = `${meta.runtimeSlide}:${meta.step}`;
+        if (stateKey === previousKey) throw new Error(`Traversal stopped making progress at runtime slide ${meta.runtimeSlide}, reveal ${meta.step}/${meta.maxStep}; browser status is incomplete.`);
+        previousKey = stateKey;
+        result.issues.forEach((item) => findings.push({ ...item, state: `${meta.step}/${meta.maxStep}` }));
+        states.push(meta);
+        if (!selectedPages && meta.step === 0 && context.config.pagePairs?.enabled !== false) {
+          pagePairStates.push(await page.evaluate(capturePagePairState, { config:context.config, metadata:meta }));
+        }
+
+        const captureTargets = new Set([0, Math.ceil(meta.maxStep / 2), meta.maxStep]);
+        if (context.args.screenshots && (selectedPages || captureTargets.has(meta.step))) {
+          const label = meta.step === 0 ? "initial" : meta.step === meta.maxStep ? "final" : "middle";
+          const filename = `${String(meta.runtimeSlide).padStart(3, "0")}-${(meta.slideId || "slide").replace(/[^a-z0-9_-]+/gi, "-")}-${label}-step-${meta.step}.jpg`;
+          const destination = path.join(screenshotDir, filename);
+          await page.screenshot({ path: destination, type: "jpeg", quality: context.config.capture.quality, fullPage: false });
+          screenshots.push({ runtimeSlide: meta.runtimeSlide, slide: meta.slideId, header: meta.header, state: `${meta.step}/${meta.maxStep}`, label, file: path.relative(context.out, destination) });
+        }
+        if (meta.step === meta.maxStep) fontEnvironments.push({ runtimeSlide: meta.runtimeSlide, ...await fontEvidence(page, context.config, fonts, context.args.loadMode || 'file', browser.version()) });
       }
+
       const meta = result.metadata;
-      const answerSnapshot = await page.evaluate(captureAnswerSequence, { config: context.config });
-      if (!answerBaselines.has(answerSnapshot.runtimeSlide) && answerSnapshot.runtimeSlide) answerBaselines.set(answerSnapshot.runtimeSlide, answerSnapshot);
-      for (const item of [...answerSnapshot.findings, ...observeAnswerSequence(answerSnapshot, questionHistory, context.config)]) {
-        const key = JSON.stringify([item.rule, item.runtimeSlide, item.selector]);
-        if (!answerFindingKeys.has(key)) { answerFindingKeys.add(key); result.issues.push(item); }
-      }
       const stateKey = `${meta.runtimeSlide}:${meta.step}`;
-      if (stateKey === previousKey) throw new Error(`Traversal stopped making progress at runtime slide ${meta.runtimeSlide}, reveal ${meta.step}/${meta.maxStep}; browser status is incomplete.`);
-      previousKey = stateKey;
-      result.issues.forEach((item) => findings.push({ ...item, state: `${meta.step}/${meta.maxStep}` }));
-      states.push(meta);
-      if (meta.step === 0 && context.config.pagePairs?.enabled !== false) {
-        pagePairStates.push(await page.evaluate(capturePagePairState, { config:context.config, metadata:meta }));
+      if (!selected) {
+        if (stateKey === previousKey) throw new Error(`Traversal stopped making progress at ${stateKey}`);
+        previousKey = stateKey;
       }
-
-      const captureTargets = new Set([0, Math.ceil(meta.maxStep / 2), meta.maxStep]);
-      if (context.args.screenshots && captureTargets.has(meta.step)) {
-        const label = meta.step === 0 ? "initial" : meta.step === meta.maxStep ? "final" : "middle";
-        const filename = `${String(meta.runtimeSlide).padStart(3, "0")}-${(meta.slideId || "slide").replace(/[^a-z0-9_-]+/gi, "-")}-${label}-step-${meta.step}.jpg`;
-        const destination = path.join(screenshotDir, filename);
-        await page.screenshot({ path: destination, type: "jpeg", quality: context.config.capture.quality, fullPage: false });
-        screenshots.push({ runtimeSlide: meta.runtimeSlide, slide: meta.slideId, header: meta.header, state: `${meta.step}/${meta.maxStep}`, label, file: path.relative(context.out, destination) });
-      }
-
-      const atEnd = meta.runtimeSlide === meta.runtimeSlides && meta.step === meta.maxStep;
+      const atEnd = meta.runtimeSlide === (selectedPages?.at(-1) || meta.runtimeSlides) && meta.step === meta.maxStep;
       if (atEnd) break;
       const beforeAdvance = await page.evaluate(slideSelector => {
         const slides = [...document.querySelectorAll(slideSelector)];
@@ -595,14 +617,15 @@ async function runBrowserAudit(context) {
         throw new Error(`Navigation did not advance from ${beforeAdvanceLabel} (attempted ${activated} control). Add a next control, a recognised next() handler, or ArrowRight navigation.`);
       });
     }
-    if (guard >= 2000) findings.push(finding("B35-RUNTIME-001", "error", "Browser traversal exceeded 2000 states and was stopped."));
-    const answerReentry = await auditAnswerReentry(page, context.config, answerBaselines);
+    if (guard >= 2000) throw new Error('Browser traversal exceeded 2000 states; coverage is incomplete');
+    if (selectedPages && selectedPages.some(n => !selectedVisited.has(n) || !states.some(s => s.runtimeSlide === n && s.step === s.maxStep))) throw new Error('Selected pages were not all inspected through their final reveal');
+    const answerReentry = selectedPages ? { findings: [], coverage: { enabled: false, stopReason: 'Page-scoped run: backward re-entry is not checked.' } } : await auditAnswerReentry(page, context.config, answerBaselines);
     findings.push(...answerReentry.findings);
-    findings.push(...auditPagePairs(pagePairStates, context.config));
+    if (!selectedPages) findings.push(...auditPagePairs(pagePairStates, context.config));
     pageErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Page exception: ${message}`)));
-    consoleErrors.forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Console error: ${message}`)));
+    consoleErrors.filter(message=>!failedRequests.length||!/^Failed to load resource:/i.test(message)).forEach((message) => findings.push(finding("B35-RUNTIME-002", "error", `Console error: ${message}`)));
     failedRequests.forEach((request) => findings.push(finding("B35-RUNTIME-002", context.config.policy.externalRequestFailureSeverity, `Resource failed to load: ${request.url}`, { evidence: request })));
-    return { blocked: false, findings, states, screenshots, pagePairStates, answerSequenceCoverage: answerReentry.coverage, runtime: states.at(-1)?.runtimeSlides || null, consoleErrors, pageErrors, failedRequests };
+    return { blocked: false, findings, states, screenshots, pagePairStates, answerSequenceCoverage: answerReentry.coverage, runtime: runtimeCount, navigatedStates, fontEnvironment: { browserVersion: browser.version(), loadMode: context.args.loadMode || 'file', suppliedFonts: fonts.map(({data,...metadata})=>metadata), pages: fontEnvironments }, consoleErrors, pageErrors, failedRequests };
   } catch (error) {
     return { blocked: true, reason: error.message, findings, states, screenshots, pagePairStates, consoleErrors, pageErrors, failedRequests };
   } finally {
@@ -642,6 +665,7 @@ function reportMarkdown(report) {
   lines.push(`- Automated warnings: **${report.summary.warnings}**`);
   lines.push(`- Browser stage: **${report.browser.status}**`);
   lines.push(`- Overall status: **${report.summary.overall}**`, "");
+  lines.push(`- Scope: **${report.coverage.scope}**`, report.coverage.automated, '', ...report.coverage.notCovered.map(s=>`- Not covered: ${s}`), '');
   if (report.browser.reason) lines.push(`> Browser stage was not completed: ${report.browser.reason.replace(/\s+/g, " ").slice(0, 900)}`, "");
   lines.push("A clean automated report does not complete B35. The manual decisions below must still be recorded from the rendered deck.", "");
   lines.push("Automated visual-review rules inspect DOM geometry, styles and configured concepts. **No AI screenshot analysis is performed.** Screenshot approval remains a separate manual step.", "");
@@ -727,7 +751,7 @@ async function main() {
   fs.mkdirSync(out, { recursive: true });
   const context = { args, config, source, slides, file, out };
   let findings = [];
-  for (const rule of staticRuleRegistry) findings.push(...rule(context));
+  if (!args.pages) for (const rule of staticRuleRegistry) findings.push(...rule(context));
   const browser = args.staticOnly ? { blocked: false, skipped: true, findings: [], states: [], screenshots: [], runtime: null } : await runBrowserAudit(context);
   findings.push(...browser.findings);
   if (!browser.blocked && !browser.skipped) {
@@ -750,7 +774,13 @@ async function main() {
     file,
     fileName: path.basename(file),
     config: configFile,
+    coverage: coverage('lesson', args.staticOnly, args.pages),
     summary: { errors, warnings, overall, manualAcceptanceRequired: true },
+    finalStateSummary: {
+      scope: 'Final reveal of each audited runtime page; document-wide findings excluded',
+      errors: findings.filter(f=>f.severity==='error'&&browser.states.some(s=>s.step===s.maxStep&&f.runtimeSlide===s.runtimeSlide&&f.state===`${s.step}/${s.maxStep}`)).length,
+      warnings: findings.filter(f=>f.severity==='warning'&&browser.states.some(s=>s.step===s.maxStep&&f.runtimeSlide===s.runtimeSlide&&f.state===`${s.step}/${s.maxStep}`)).length
+    },
     visualReviewCoverage: {
       automated: "Rendered DOM geometry, style and bounded vocabulary contracts",
       screenshotImageAnalysis: "NOT IMPLEMENTED — screenshots require separate visual review",
@@ -762,11 +792,13 @@ async function main() {
       expectedRuntimeSlides,
       runtimeSlides: browser.runtime,
       revealStatesInspected: browser.states.length,
+      navigationStatesVisited: browser.navigatedStates || 0,
+      pagesInspected: [...new Set(browser.states.map(s=>s.runtimeSlide))],
       screenshotsCaptured: browser.screenshots.length,
       sourceLegacyFractionReferences: countClassToken(source, "frac"),
       sourceMathMLFractions: countMatches(source, /<mfrac\b/gi)
     },
-    browser: { status: browserStatus, reason: browser.reason || null, consoleErrors: browser.consoleErrors || [], pageErrors: browser.pageErrors || [], failedRequests: browser.failedRequests || [] },
+    browser: { status: browserStatus, reason: browser.reason || null, fontEnvironment: browser.fontEnvironment || null, consoleErrors: browser.consoleErrors || [], pageErrors: browser.pageErrors || [], failedRequests: browser.failedRequests || [] },
     findings,
     states: browser.states,
     pagePairStates: browser.pagePairStates || [],
@@ -781,7 +813,8 @@ async function main() {
   process.exitCode = browser.blocked ? 2 : errors ? 1 : 0;
 }
 
-main().catch((error) => {
+if (require.main === module) main().catch((error) => {
   console.error(error.stack || error.message);
   process.exitCode = 2;
 });
+module.exports = { runBrowserAudit, runtimeAuditFunction, extractSlides };
