@@ -29,7 +29,9 @@ async function main(){
     await check('nested MathML backing is detected',mathBacking('','','<math style="background:white"><mn>8</mn></math>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
     await check('intentional contrast backing needs purpose and reason',mathBacking('background:white','data-b35-math-backing="contrast" data-b35-math-backing-reason="Label crosses a dark connector"'),none('B35-DIAGRAM-006'));
     await check('backing annotation without reason cannot suppress warning',mathBacking('background:white','data-b35-math-backing="contrast"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
-    await check('ordinary prose label is outside maths backing rule',mathBacking('background:white','','Diagram heading'),none('B35-DIAGRAM-006'));
+    await check('ordinary diagram heading backing also warns',mathBacking('background:white','','REAL NUMBERS'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
+    await check('plain numeric label backing also warns',mathBacking('background:white','','0, 1, 2 …'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-006')));
+    await check('transparent diagram heading passes',mathBacking('background:transparent','','REAL NUMBERS'),none('B35-DIAGRAM-006'));
     await check('hidden formula backing waits until reveal',mathBacking('background:white;visibility:hidden'),none('B35-DIAGRAM-006'));
     await check('filled diagram region is allowed behind transparent maths',mathBacking('background:transparent').replace('<span class="diagram-label"','<svg width="100" height="50"><rect width="100" height="50" fill="purple"/></svg><span class="diagram-label"'),none('B35-DIAGRAM-006'));
     const diagramLabel=style=>wrap('<div class="diagram-frame" style="position:relative;width:300px;height:120px"><span class="diagram-label" style="position:absolute;'+style+'">A diagram label</span></div>');
