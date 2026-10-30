@@ -22,6 +22,15 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    const notes=(role,step='')=>wrap('<div class="practice-answer" data-step="1" style="visibility:hidden">Answer</div><div class="step-solution" data-step="2" style="visibility:hidden">Working</div><div class="note" '+role+' '+step+'>Teaching note</div>');
+    await check('early conclusion warns',notes('data-b35-note-role="conclusion"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-005'&&x.evidence.kind==='early-conclusion')));
+    await check('unclassified note requests purpose review',notes(''),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-005'&&x.evidence.kind==='note-purpose-review')));
+    await check('question prerequisite may appear early',notes('data-b35-note-role="preface"'),xs=>{assert.ok(!xs.some(x=>x.rule==='B35-ORDER-005'||x.rule==='B35-ORDER-004'));});
+    await check('conclusion after working passes',notes('data-b35-note-role="conclusion"','data-step="3"'),none('B35-ORDER-005'));
+    await check('conclusion on same beat as last answer warns',notes('data-b35-note-role="conclusion"','data-step="2"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-005')));
+    await check('page without delayed answers does not demand a final reveal',wrap('<div class="note">A rule for the lesson</div>'),none('B35-ORDER-005'));
+    await check('hidden conclusion does not warn before visible',notes('data-b35-note-role="conclusion"','data-step="3" style="visibility:hidden"'),none('B35-ORDER-005'));
+    await check('ancestor reveal step is accounted for',wrap('<div class="practice-answer" data-step="1" style="visibility:hidden">Answer</div><div data-step="2"><div class="note" data-b35-note-role="conclusion">Takeaway</div></div>'),none('B35-ORDER-005'));
     const boundary=css=>wrap('<div class="summary-card" style="width:200px;height:120px;'+css+'">Card</div>');
     await check('faint grey boundary warns',boundary('border:1px solid #cbd5e1;background:white'),xs=>assert.ok(xs.some(x=>x.rule==='B35-LAYOUT-010')));
     await check('missing boundary on white warns',boundary('background:white'),xs=>assert.ok(xs.some(x=>x.rule==='B35-LAYOUT-010')));

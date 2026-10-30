@@ -654,6 +654,12 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
+## Teaching note reveal order — B35-ORDER-005
+
+When a page has delayed working or answers, a visible `data-b35-note-role="conclusion"` should appear on a later reveal beat than the last recognised solution or answer. A `data-b35-note-role="preface"` identifies a prerequisite or question hint that may appear earlier, and is excluded from the generic box-order warning. An unclassified `.note` visible before the final solution beat triggers a purpose-review warning rather than being assumed to be a conclusion. The check uses DOM roles and data-step ancestry, not note colour or inferred semantic meaning. It does not require a new reveal on pages without delayed working.
+
+The known working/answer selectors are `.step-solution`, `.practice-answer`, `[data-role="answer"]` and `[data-b35-reveal-role="working"|"answer"]`. If a note legitimately depends on only some of several independent tasks, or a lesson uses another navigation engine, inspect its purpose and reveal states manually. The rule emits review warnings and never hides or deletes content; an author must annotate the correct role and implement the reveal. Set `visualReview.conclusionRevealEnabled` to false only when intentionally omitting this coverage.
+
 ## Card boundary visibility — B35-LAYOUT-010
 
 Visible cards on similar solid backgrounds should have discernible boundaries. The rendered check compares each border side and the card fill with the surrounding background, including transparent CSS colours. A missing/transparent edge or faint border warns when neither border nor fill meets `visualReview.cardBoundaryMinimumContrast` (default 1.5). This is a review heuristic, not a WCAG criterion or a requirement that every card have a border. No specific colour or first-card styling is prescribed.

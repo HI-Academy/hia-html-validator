@@ -89,6 +89,28 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // Teaching purpose, not yellow colour, determines whether a note belongs
+    // before the task or after the final relevant solution beat.
+    if(settings.conclusionRevealEnabled!==false){
+      const revealStep=node=>{let step=0;for(let n=node;n&&n!==slide.parentElement;n=n.parentElement){const v=Number(n.getAttribute('data-step'));if(Number.isInteger(v)&&v>step)step=v;}return step;};
+      const workings=[...slide.querySelectorAll('.practice-answer,.step-solution,[data-role="answer"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]')].filter(n=>!n.closest('[data-b35-note-role]'));
+      const lastWorking=Math.max(0,...workings.map(revealStep));
+      if(lastWorking>0){
+        for(const note of slide.querySelectorAll('.note,[data-b35-note-role]')){
+          if(!visible(note)||note.closest('[data-b35-note-role="preface"]'))continue;
+          const role=note.getAttribute('data-b35-note-role'),step=revealStep(note);
+          if(step>lastWorking)continue;
+          const conclusion=role==='conclusion';
+          review('B35-ORDER-005',conclusion?'A conclusion appears before the final solution reveal.':'A note appears before the final solution reveal; confirm its teaching purpose.',note,{
+            kind:conclusion?'early-conclusion':'note-purpose-review',noteRole:role||'unclassified',noteStep:step,lastWorkingStep:lastWorking,
+            expected:'A conclusion appears after relevant answers and working; a prerequisite or question hint can appear earlier.',
+            suggestedAction:conclusion?'Reveal this conclusion on a separate step after the last relevant working or answer.':'Review its purpose. Mark conclusions data-b35-note-role="conclusion" and prerequisites data-b35-note-role="preface"; do not automatically hide or delete ambiguous content.',
+            limitations:'Checks declared note roles and recognised working/answer containers. It cannot infer instructional meaning from colour or prose; review other reveal engines and dependencies separately.'
+          });
+        }
+      }
+    }
+
     // Boundary visibility is a review heuristic, not a universal requirement
     // for borders or a WCAG conformance claim. Never prescribe a card colour.
     if(settings.cardBoundaryEnabled!==false){
@@ -187,7 +209,7 @@ function auditVisualReview(config) {
       const selector=settings.boxReadingOrderSelectors || '.qcard,.concept-card,.note,.box,.ss,.tcard,.card,.prompt,.practice-question,.step-solution,.visual-card,[data-b35-diagram-role],[data-b35-content-panel],[data-b35-reveal-order-card]';
       let nodes=[];
       try { nodes=[...slide.querySelectorAll(selector)]; } catch { nodes=[]; }
-      const candidates=nodes.filter(node=>!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order]'))
+      const candidates=nodes.filter(node=>!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"]'))
         .filter(node=>node.getAttribute('data-b35-diagram-role')==='solution'||!nodes.some(parent=>parent!==node&&parent.contains(node)))
         .map(node=>{
           const rect=boxFor(node);
