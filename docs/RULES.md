@@ -389,6 +389,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-COMPOSITION-004` | A callout soft-wraps to a very short final line | Final-state review warning |
 | `B35-COMPOSITION-005` | Watermark text geometrically intersects several teaching elements at reviewable opacity | Review warning; pixels/occlusion unverified |
 | `B35-TYPE-005` | Inline mathematical base tokens have a displaced estimated baseline or excessive surrounding spacing | Review warning |
+| `B35-MATH-025` | Embedded SVG/MathML base-token baseline agrees with its surrounding MathML formula | Measured baseline review warning |
 | `B35-SVG-001` | SVG has a `viewBox` and non-zero geometry; accessible-name check is optional and off by default | Automated |
 | `B35-CONTRAST-001` | Visible direct text meets configured CSS colour contrast ratios outside cards | Warning |
 | `B35-CONTRAST-002` | Card text contrasts with its own nested/painted CSS background | Error |
@@ -829,3 +830,12 @@ A panel may declare `data-b35-reveal-group` to identify local instructional owne
 `B35-ORDER-007` independently checks local `.eq`, `.formula`, `.work`, `.step-solution` and explicit equation/formula-row elements. An unmarked derived expression can inherit its panel's first beat while instructions above it remain hidden on later beats. Such a row now requires review even without its own `data-step`. The scope is the nearest ancestor reveal group/card/content panel, or the row parent. Earlier local DOM elements with later gates are compared, using their vertical positions where available. Give a derived row its own gate after the relevant instructions; preserve a genuine question/given before its working. Explicit question expressions retain their early allowance.
 
 `visualReview.groupedRevealEnabled:false` omits inferred grouping and ORDER-006. `boxReadingOrderEnabled:false` omits the reading-order family, including ORDER-007. These are bounded DOM/geometry checks, not a semantic proof or screenshot acceptance. Inspect every reveal after repairs. An annotation describes scope or intent; it does not implement reveal behaviour.
+
+
+## Embedded mathematics baseline — B35-MATH-025
+
+Base-level mathematical letters/numbers inside a mixed renderer must share the surrounding formula baseline. `B35-MATH-025` checks visible SVG `foreignObject` MathML inside a MathML `mtext`, including custom vector radicals. It measures internal/external zero-height MathML baseline probes and removes them in a `finally` block; measurements are used only if adding probes leaves SVG geometry unchanged within 0.25 design px. It accounts for an authored `mpadded`/`mstyle` carrier. Glyph bounding-box bottoms are not compared: a lowercase p descends below an uppercase A even when their baselines match.
+
+Default tolerance is max(1 design px, 0.08 times outer formula font size), configurable through `complementaryChecks.embeddedMathBaseline` (`enabled`, `tolerancePx`, `toleranceEm`). `policy.embeddedMathBaselineSeverity` defaults to `warning`; `off` omits findings. Symbol-rendering approvals do not waive this independent check.
+
+Fraction/script/accent/table/root-nested embeddings are excluded from this base-token comparison because their offsets may be structural. Native MathML, KaTeX/MathJax and arbitrary SVG text are not certified by this bounded check; existing typography/presentation/optical-review checks remain. A pass is not screenshot approval. Inspect normal-size formula context and revalidate after fonts, embedding metrics or geometry change. Regressions are in `tests/test-embedded-baseline.cjs` and included in `npm test`.

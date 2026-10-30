@@ -154,6 +154,7 @@
     "spacingSelectors": ".card,.visual-card,.step-solution,[data-b35-spacing-group]"
   },
   "complementaryChecks": {
+    "embeddedMathBaseline": {"enabled": true, "tolerancePx": 1, "toleranceEm": 0.08},
     "proseTypography": {
       "enabled": true,
       "selectors": ".prompt,.practice-question,.hint,.note,.rule,.warning,.check,.card p,.summary-card p,.caption,[data-b35-card-example],[data-b35-comparison-caption],[data-b35-content-role=question],[data-b35-content-role=hint],[data-b35-content-role=note]",

@@ -89,6 +89,42 @@ function auditComplementaryChecks(config) {
       issues.push({rule,severity,message,slide:slide.id,runtimeSlide:slides.indexOf(slide)+1,
         header:(slide.querySelector(config.selectors.header)?.textContent||'').trim(),selector:pathFor(node),evidence,...guidance});
     };
+    const baseline=settings.embeddedMathBaseline||{};
+    if(baseline.enabled!==false){
+      for(const svg of select(slide,'math mtext svg:has(foreignObject math)')){
+        if(!visible(svg))continue;
+        const text=svg.closest('mtext'),outer=text?.closest('math'),inner=svg.querySelector('foreignObject math');
+        if(!text||!outer||!inner)continue;
+        // Only compare base-level inline tokens. Fraction/script layouts have
+        // intentional vertical offsets and are outside this bounded check.
+        let carrier=text,structural=false;
+        for(let n=text.parentElement;n&&n!==outer;n=n.parentElement){
+          if(/^(mfrac|msup|msub|msubsup|mover|munder|munderover|msqrt|mroot|mtable|mtr|mtd)$/.test(n.localName))structural=true;
+          if(n.localName==='mpadded'||n.localName==='mstyle')carrier=n;
+        }
+        if(structural)continue;
+        const ns='http://www.w3.org/1998/Math/MathML';
+        const external=document.createElementNS(ns,'mspace'),internal=document.createElementNS(ns,'mspace');
+        for(const marker of [external,internal])for(const key of ['width','height','depth'])marker.setAttribute(key,'0px');
+        const before=rect(svg);let delta=null,stable=false;
+        try{
+          carrier.after(external);inner.append(internal);
+          delta=(internal.getBoundingClientRect().top-external.getBoundingClientRect().top)/scale;
+          const after=rect(svg);
+          stable=['left','top','width','height'].every(key=>Math.abs(after[key]-before[key])/scale<=.25);
+        }finally{external.remove();internal.remove();}
+        if(!stable||!Number.isFinite(delta))continue;
+        const font=parseFloat(getComputedStyle(outer).fontSize)||18;
+        const maximum=Math.max(baseline.tolerancePx??1, font*(baseline.toleranceEm??.08));
+        if(Math.abs(delta)>maximum)emit('B35-MATH-025',policy.embeddedMathBaselineSeverity||'warning',
+          'Embedded mathematical content has a displaced baseline inside its formula.',svg,
+          {kind:'embedded-math-baseline',offsetPx:delta,maximumPx:maximum,outerFormula:pathFor(outer),embeddedFormula:pathFor(inner),method:'temporary zero-size MathML baseline probes; geometry unchanged',visualAppearanceVerified:false},
+          {expected:'Base-level letters and numbers inside an embedded mathematical renderer share the surrounding formula baseline.',
+            suggestedAction:'Correct the renderer embedding baseline (including its MathML height/depth metrics), preserving operands and radical geometry. Do not align glyph bounding-box bottoms or apply one offset to every radical without measuring.',
+            verification:['Inspect the whole formula at lesson size after fonts load.','Recheck affected viewports, line spacing, radicals and clipping after repair.'],
+            constraints:['Bounded coverage: visible SVG/foreignObject MathML embedded in MathML mtext; native roots and other engines retain their separate checks.','Fractions, scripts, accents, tables and root-nested embeddings are excluded from base-token comparison.','No screenshot acceptance; probe nodes are removed before returning.']});
+      }
+    }
     const proseTypography=settings.proseTypography;
     if(proseTypography?.enabled){
       const excluded='script,style,svg,.hi-wm,.nav,.book,.tag,.answer-tag,.practice-num,sup,sub,.power';
