@@ -22,6 +22,13 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    await check('native radical cannot certify smooth hook-bar join',wrap('<math><msqrt><mn>2</mn></msqrt></math>'),xs=>assert.equal(xs.find(x=>x.rule==='B35-MATH-024').evidence.visualAppearanceVerified,false));
+    await check('native indexed root also needs join review',wrap('<math><mroot><mn>8</mn><mn>3</mn></mroot></math>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-024')));
+    const radicalSvg=(sign,bar='')=>wrap('<svg data-b35-diagram="radical" width="100" height="60">'+sign+bar+'<text x="35" y="40">2</text></svg>');
+    await check('one continuous radical path passes continuity check',radicalSvg('<path data-b35-radical-sign d="M2 25 L8 20 L15 48 L30 5 L70 5" fill="none" stroke="black"/>'),none('B35-MATH-024'));
+    await check('detached SVG overbar is detected',radicalSvg('<path data-b35-radical-sign d="M2 25 L8 20 L15 48 L30 5"/>','<line data-b35-radical-overbar x1="40" y1="5" x2="70" y2="5"/>'),xs=>assert.ok(xs.some(x=>x.evidence.kind==='detached-radical-overbar')));
+    await check('joined SVG overbar passes',radicalSvg('<path data-b35-radical-sign d="M2 25 L8 20 L15 48 L30 5"/>','<line data-b35-radical-overbar x1="30" y1="5" x2="70" y2="5"/>'),none('B35-MATH-024'));
+    await check('multi-subpath radical is not silently accepted',radicalSvg('<path data-b35-radical-sign d="M2 25 L30 5 M40 5 L70 5"/>'),xs=>assert.ok(xs.some(x=>x.evidence.kind==='multi-subpath-radical-join-review')));
     await check('plain coefficient expression warns',wrap('<p>Factor 9a + 9b.</p>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-MATH-023').evidence.expressions,['9a + 9b']));
     await check('HTML diagram labels also require semantic maths',wrap('<span class="diagram-label">COUNT BLUE FIRST: 5 + 3 = 8</span>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-023')));
     await check('formula prose detects coefficient-variable products',wrap('<div class="formula-prose">If N = kA and D = kB, then</div>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-MATH-023').evidence.expressions,['N = kA','D = kB']));

@@ -89,6 +89,47 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // Native radical joins are renderer-painted, not exposed as DOM geometry.
+    // A semantic msqrt therefore cannot silently certify a smooth join.
+    if(settings.radicalJoinReviewEnabled!==false){
+      for(const node of slide.querySelectorAll('msqrt,mroot')){
+        if(!visible(node))continue;
+        review('B35-MATH-024','Native radical hook/overbar continuity requires rendered visual review.',node,{
+          kind:'native-radical-join-review',visualAppearanceVerified:false,
+          expected:'A continuous hook-to-overbar join without an unintended gap or step.',
+          suggestedAction:'Inspect at lesson size and enlarged resolution. If the renderer produces a stepped join, use a coherent continuous vector radical while preserving the complete radicand, root index and accessible maths meaning.',
+          limitation:'Native radical glyph/bar junctions are not exposed as DOM paths; this warning does not assert that the join is defective.'
+        });
+      }
+      const endpoints=node=>{
+        try{
+          const m=node.getScreenCTM();if(!m)return [];
+          const points=node.localName==='line'?[{x:node.x1.baseVal.value,y:node.y1.baseVal.value},{x:node.x2.baseVal.value,y:node.y2.baseVal.value}]
+            :[node.getPointAtLength(0),node.getPointAtLength(node.getTotalLength())];
+          return points.map(p=>new DOMPoint(p.x,p.y).matrixTransform(m));
+        }catch{return [];}
+      };
+      for(const node of slide.querySelectorAll('svg[data-b35-diagram="radical"]')){
+        if(!visible(node))continue;
+        const sign=node.querySelector('[data-b35-radical-sign]'),bar=node.querySelector('[data-b35-radical-overbar]');
+        if(!sign)continue; // Missing structure is reported by MATH-020.
+        let kind=null,gap=null;
+        if(bar){
+          const a=endpoints(sign),b=endpoints(bar);
+          if(!a.length||!b.length)kind='radical-join-unmeasurable';
+          else{gap=Math.min(...a.flatMap(p=>b.map(q=>Math.hypot(p.x-q.x,p.y-q.y))))/scale;
+            if(gap>.75)kind='detached-radical-overbar';}
+        }else if(sign.localName==='path'&&((sign.getAttribute('d')||'').match(/[Mm]/g)||[]).length!==1)kind='multi-subpath-radical-join-review';
+        else if(sign.localName!=='path'&&sign.localName!=='polyline')kind='radical-join-unmeasurable';
+        if(kind)review('B35-MATH-024','Radical hook/overbar join is detached or needs continuity review.',node,{
+          kind,endpointGapPx:gap,visualAppearanceVerified:false,
+          expected:'Use one connected hook/overbar path, or joined declared sign/overbar endpoints.',
+          suggestedAction:'Correct the join without changing the radicand, root index or font. Mark a separate overbar data-b35-radical-overbar and inspect the result at normal size.',
+          limitation:'Endpoint checks support declared SVG line/path geometry; passing them does not certify stroke aesthetics, hidden paths or mathematical correctness.'
+        });
+      }
+    }
+
     // MATH-023: find mathematical runs that never entered a maths renderer.
     // Deliberately conservative: single-letter variables/numeric operands and
     // explicit operators, not lone numbers, units, names or ordinary words.

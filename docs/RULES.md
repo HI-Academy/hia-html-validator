@@ -654,6 +654,12 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
+## Radical hook/overbar continuity — B35-MATH-024
+
+Native `msqrt`/`mroot` semantics do not prove that the renderer draws a smooth join. Visible native roots receive a `native-radical-join-review` warning requiring normal-size and enlarged inspection, even if an older symbol-stroke approval exists. This is a review request, not a claim that every native root is defective. Set `visualReview.radicalJoinReviewEnabled` to false only when deliberately omitting this review coverage; report that limitation.
+
+For declared `svg[data-b35-diagram="radical"]`, use one connected path/polyline marked `data-b35-radical-sign`, with the radicand marked `data-b35-radicand`. A separate bar uses `data-b35-radical-overbar`. The rule compares transformed line/path endpoints, warning when the nearest endpoints differ by more than 0.75 design pixels; multiple path subpaths or unsupported geometry require review. A passing path check is not pixel analysis and does not certify stroke balance, clipping, the mathematical content, or arbitrary interior path junctions. Preserve radicands, root indices and accessible meaning during repair. Existing MATH-020 bounds checks and MATH-019 optical review still apply.
+
 ## Unmarked mathematics in prose — B35-MATH-023
 
 Visible question and explanation prose, formula-prose containers, HTML diagram labels and captions are checked for plain-text mathematical runs such as `9a + 9b`, `x + 2 = 4`, `N = kA` and `3 × 4`. Each complete expression belongs inside MathML or the configured semantic maths renderer, with numbers, variables and operators using the maths font. Surrounding English retains the prose font. Changing the entire paragraph's font is not the remedy. Inline HTML wrappers do not bypass detection; semantic renderer boundaries, line breaks and separate blocks are respected. Findings include matched expressions and the affected panel selector, and are review warnings rather than automatic content rewrites.
