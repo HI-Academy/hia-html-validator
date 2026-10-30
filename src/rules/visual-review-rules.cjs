@@ -288,7 +288,8 @@ function auditVisualReview(config) {
       const workSelector='.step-solution,.practice-answer,.eq,.work,[data-role="answer"],[data-b35-content-role="solution"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]';
       const work=[...slide.querySelectorAll(workSelector)].filter(node=>!node.closest(excluded));
       const containers=new Set();
-      if(settings.groupedRevealEnabled!==false)for(const node of work)for(let parent=node.parentElement;parent&&parent!==slide;parent=parent.parentElement){
+      const revealNodes=[...slide.querySelectorAll('[data-step]')].filter(node=>!node.closest(excluded));
+      if(settings.groupedRevealEnabled!==false)for(const node of new Set([...work,...revealNodes]))for(let parent=node.parentElement;parent&&parent!==slide;parent=parent.parentElement){
         if(parent.children.length>1&&/^(grid|inline-grid|flex|inline-flex)$/.test(getComputedStyle(parent).display))containers.add(parent);
       }
       const groups=[];
@@ -299,8 +300,9 @@ function auditVisualReview(config) {
         const columns=[...container.children].map(node=>{
           const working=work.filter(item=>node.contains(item));
           const notes=[...node.querySelectorAll('.note')].filter(item=>!item.closest(excluded));
-          return {node,rect:boxFor(node),working,work:[...new Set([...working,...notes])]};
-        }).filter(item=>item.rect.width>=20&&item.rect.height>=20&&item.working.length>=1&&item.work.length>=2);
+          const rows=revealNodes.filter(item=>item!==node&&node.contains(item));
+          return {node,rect:boxFor(node),working,rows,work:[...new Set([...working,...notes,...rows])]};
+        }).filter(item=>item.rect.width>=20&&item.rect.height>=20&&(item.working.length||item.rows.length));
         // Only distinct horizontal teaching groups, not stacked/mobile content
         // or a question figure followed by a solution, imply column completion.
         if(columns.length<2||!columns.some((a,i)=>columns.slice(i+1).some(b=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance&&Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)<=2*scale)))continue;
@@ -331,7 +333,28 @@ function auditVisualReview(config) {
           expected:'Finish a teaching group from top to bottom before opening the next group from left to right.',
           suggestedAction:'Reveal each panel with its first substantive step, complete its working, then open the next panel. For an intentional row-by-row comparison, declare data-b35-reveal-order="rows" and a concrete data-b35-reveal-order-reason on the shared layout.',
           verification:['Inspect every reveal, including panel frames and headings.','Preserve original question figures, all mathematical content and the final conclusion.'],
-          confidence:'Side-by-side flex/grid groups containing at least two recognised working elements; semantic dependencies outside these bounds require review.'
+          confidence:'Side-by-side flex/grid groups containing working or nested reveal elements, including custom exercise/answer containers; semantic dependencies outside these bounds require review.'
+        });
+      }
+      // A derived row can inherit its panel's first beat even though the
+      // instructions above it have their own later gates. Audit these rows
+      // independently of the outer-panel candidate filter.
+      for(const row of slide.querySelectorAll('.eq,.formula,.work,.step-solution,[data-b35-equation],[data-b35-formula-row]')){
+        if(!visible(row)||row.closest('[data-b35-order-independent],[data-b35-ignore-reading-order],.prompt,[data-role="question"],[data-b35-note-role="preface"]'))continue;
+        const start=gate(row);if(start!==currentBeat)continue;
+        const scope=row.parentElement?.closest('[data-b35-reveal-group],.card,[data-b35-content-panel]')||row.parentElement;
+        if(!scope)continue;
+        const bounds=boxFor(row);
+        const pending=[...scope.querySelectorAll('[data-step]')].filter(node=>node!==row&&!node.contains(row)&&!row.contains(node)
+          &&!node.closest('[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"]')
+          &&(node.compareDocumentPosition(row)&Node.DOCUMENT_POSITION_FOLLOWING)&&gate(node)>start&&!visible(node)
+          &&boxFor(node).top<=bounds.top+rowTolerance);
+        if(!pending.length)continue;
+        review('B35-ORDER-007','A working/formula row appears before the preceding instructions in its teaching group.',row,{
+          kind:'early-derived-row',rowStep:start,scope:pathFor(scope),pending:pending.map(node=>({selector:pathFor(node),step:gate(node)})),
+          expected:'Finish preceding instructions before revealing the derived expression or working below them.',
+          suggestedAction:'Give the derived row its own reveal after the relevant preceding steps; do not rely only on the outer panel reveal. Preserve a genuine question/given that appears before its working.',
+          limitations:'Checks local DOM order, rendered vertical positions and effective reveal ancestry; it is not a proof of semantic dependence.'
         });
       }
       const seen=[];
