@@ -4,7 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const pkg = require('../../package.json');
 
-const RULE_VERSION = 'html-validation/2';
+const RULE_VERSION = 'html-validation/3';
 const fingerprint = value => crypto.createHash('sha256').update(Buffer.isBuffer(value) ? value : JSON.stringify(stable(value))).digest('hex');
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
@@ -72,6 +72,7 @@ function changes(previous, current) {
     configChanged: previous ? previous.configFingerprint !== current.configFingerprint : null,
     validatorChanged: previous ? previous.validatorFingerprint !== current.validatorFingerprint : null,
     optionsChanged: previous ? fingerprint(previous.options) !== fingerprint(current.options) : null,
+    renderingChanged: previous ? previous.renderingFingerprint !== current.renderingFingerprint : null,
     findingCounts: { before: previous ? { errors: previous.errors, warnings: previous.warnings } : null, after: { errors: current.errors, warnings: current.warnings } },
     pageCounts: { before: previous?.metrics?.runtimeSlides ?? null, after: current.metrics?.runtimeSlides ?? null },
     revealStates: { before: previous?.metrics?.revealStatesInspected ?? null, after: current.metrics?.revealStatesInspected ?? null }
@@ -106,8 +107,9 @@ function finalise({ directory, historyDirectory, logPath, report, entry, input, 
     status: outcome(report, entry.exitCode, options.staticOnly),
     inputFingerprint: fingerprint(input), configFingerprint: fingerprint(JSON.parse(fs.readFileSync(path.join(directory, 'resolved-config.json'), 'utf8'))),
     validatorFingerprint: engineFingerprint, options, coverage: report.coverage,
+    renderingFingerprint: fingerprint({browserVersion:report.browser?.fontEnvironment?.browserVersion||null,fonts:options.fonts||[],loadMode:options.loadMode||'file'}),
     metrics: report.metrics || null, manualReviewRequired: true, manualApproval: 'NOT_REVIEWED',
-    fingerprintScope: 'Exact HTML bytes, resolved configuration, validator source/dependencies and saved evidence. External/local asset bytes and browser binary are not versioned.'
+    fingerprintScope: 'Exact HTML bytes, resolved configuration, validator source/dependencies, supplied font-file SHA256/descriptors, browser version, load mode and saved evidence. Other assets, system-font bytes and browser binary bytes are not versioned.'
   };
   run.evidence = evidence(directory);
   run.evidenceFingerprint = fingerprint(run.evidence);
@@ -117,7 +119,7 @@ function finalise({ directory, historyDirectory, logPath, report, entry, input, 
     run.documentVersion = knownVersions.includes(run.inputFingerprint) ? knownVersions.indexOf(run.inputFingerprint) + 1 : knownVersions.length + 1;
     // Only a successful browser run is the rendered baseline. A preflight or
     // failed run never displaces it, and profiles have independent baselines.
-    const previous = sameFile.filter(r => r.profile === run.profile && r.status === 'CHECKS_PASSED').at(-1);
+    const previous = sameFile.filter(r => r.profile === run.profile && r.status === 'CHECKS_PASSED' && fingerprint(r.options?.pages||null)===fingerprint(run.options.pages||null)).at(-1);
     run.changes = changes(previous, run);
     run.historyDirectory = historyDirectory || null;
     run.archive = historyDirectory ? path.join(historyDirectory, 'runs', runId) : null;
@@ -126,7 +128,7 @@ function finalise({ directory, historyDirectory, logPath, report, entry, input, 
       validatorFingerprint: run.validatorFingerprint, evidenceFingerprint: run.evidenceFingerprint,
       status: 'NEEDS_REVIEW', changes: run.changes,
       review: { reviewerType: null, reviewerId: null, reviewedAt: null, decision: null, notes: '', evidence: [] },
-      limitations: ['Automated success is not visual/source/mathematical approval.', 'Fingerprints do not cover external/local assets; compare saved screenshots and check changed assets separately.', 'Review attribution is a supplied assertion, not authenticated identity.']
+      limitations: ['Automated success is not visual/source/mathematical approval.', 'Supplied font hashes are recorded; other external/local assets and system-font binary bytes are not covered. Compare screenshots and check changed assets separately.', 'Review attribution is a supplied assertion, not authenticated identity.']
     };
     json(path.join(directory, 'run.json'), run);
     json(path.join(directory, 'change-review.json'), review);

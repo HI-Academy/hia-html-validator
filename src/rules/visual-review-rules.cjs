@@ -234,7 +234,7 @@ function auditVisualReview(config) {
       const cardBoxes=cards.map(boxFor);
       const sortedBoxes=[...cardBoxes].sort((a,b)=>a.left-b.left);
       if(sortedBoxes.some((box,i)=>i&&(box.left<sortedBoxes[i-1].right-1||Math.min(box.bottom,sortedBoxes[i-1].bottom)-Math.max(box.top,sortedBoxes[i-1].top)<.5*Math.min(box.height,sortedBoxes[i-1].height))))continue;
-      if(!model&&!group.hasAttribute("data-b35-comparison")&&!cards.every(card=>card.querySelector(".formula,.work,[data-b35-card-formula]")))continue;
+      if(!model&&!group.hasAttribute("data-b35-comparison")&&!cards.every(card=>card.querySelector(".formula,.work,.eq,[data-b35-card-formula],[data-b35-equation]")))continue;
       comparisonGroups.push({group,cards});
       const alignmentReview=(message,evidence)=>{
         review('B35-LAYOUT-001',message,group,evidence);
@@ -251,7 +251,7 @@ function auditVisualReview(config) {
         if(['top','bottom','height'].some(key=>spread(key)>(limits.cardAlignmentTolerancePx??8)))alignmentReview('Matching comparison cards have inconsistent top/bottom edges or heights.',
           {kind:'comparison-card-geometry',measurements:cardBoxes.map((b,i)=>({selector:pathFor(cards[i]),top:b.top/scale,bottom:b.bottom/scale,height:b.height/scale}))});
         const rows=cards.map(card=>{
-          const nodes=[...card.querySelectorAll(model?.rowSelector||'.eq,.formula,[data-b35-formula-row]')].filter(visible);
+          const nodes=[...card.querySelectorAll(model?.rowSelector||'.qa-text-row,.eq,.formula,[data-b35-formula-row]')].filter(visible);
           return nodes.filter(node=>!nodes.some(other=>other!==node&&node.contains(other)));
         });
         if(rows[0].length>=2&&rows.every(items=>items.length===rows[0].length))for(let index=0;index<rows[0].length;index++){
@@ -260,7 +260,7 @@ function auditVisualReview(config) {
             {kind:'comparison-equation-row-alignment',row:index+1,measurements:samples});
         }
       }
-      const roles=model?.roles||{heading:"h3,.tag,[data-b35-card-heading]",formula:".formula,.work,[data-b35-card-formula]",example:".note,.caption,[data-b35-card-example]"};
+      const roles=model?.roles||{heading:"h3,.tag,[data-b35-card-heading]",formula:".formula,.work,.eq,[data-b35-card-formula]",example:".note,.caption,p,[data-b35-card-example]"};
       for(const [role,query]of Object.entries(roles)) {
         const samples=cards.map(card=>{
           const node=[...card.querySelectorAll(query)].find(visible);

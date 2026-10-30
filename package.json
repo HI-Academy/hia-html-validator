@@ -1,12 +1,33 @@
 {
   "name": "hia-html-validator",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "description": "Command-line rendered HTML, SVG and maths checks, with full B35 lesson-deck validation",
-  "repository": { "type": "git", "url": "git+https://github.com/HI-Academy/hia-html-validator.git" },
-  "bin": { "hia-html-validator": "bin/hia-html-validator.cjs", "html-validate-b35": "bin/hia-html-validator.cjs", "b35-validate": "bin/hia-html-validator.cjs" },
-  "engines": { "node": ">=20" },
-  "files": ["bin/", "src/", "config/", "templates/", "docs/", "tests/", "scripts/", "README.md", "AGENTS.md", "html-cli.cjs", "validate-b35.cjs"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HI-Academy/hia-html-validator.git"
+  },
+  "bin": {
+    "hia-html-validator": "bin/hia-html-validator.cjs",
+    "html-validate-b35": "bin/hia-html-validator.cjs",
+    "b35-validate": "bin/hia-html-validator.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "config/",
+    "templates/",
+    "docs/",
+    "tests/",
+    "scripts/",
+    "README.md",
+    "AGENTS.md",
+    "html-cli.cjs",
+    "validate-b35.cjs"
+  ],
   "scripts": {
     "validate": "node validate-b35.cjs",
     "validate:html": "node bin/hia-html-validator.cjs",
@@ -16,6 +37,7 @@
     "test:models": "node tests/test-visual-models.cjs",
     "test:visual-review": "node tests/test-visual-review.cjs",
     "test:presentation": "node tests/test-presentation.cjs",
+    "test:reproducible": "node tests/test-reproducible.cjs",
     "test:page-pairs": "node tests/test-page-pairs.cjs",
     "test:complementary": "node tests/test-complementary.cjs",
     "test:reusability": "node tests/test-reusability.cjs",

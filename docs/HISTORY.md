@@ -68,28 +68,38 @@ coverage fields, with these additions:
   canonical input path within this history root. Unchanged HTML retains its
   number; reverting to previously observed bytes reuses their original number.
   Renaming or moving an input starts a separate document history.
-- `ruleVersion`: `html-validation/2`, the ruleset/check contract version.
+- `ruleVersion`: `html-validation/3`, the ruleset/check contract version.
   `version` identifies the package release; `validatorFingerprint` detects
   implementation changes even if the release number was not updated.
 - `inputFingerprint`: SHA-256 of the exact HTML bytes.
 - `configFingerprint`: SHA-256 of the canonical resolved configuration.
 - `validatorFingerprint`: SHA-256 over validator source, default configuration,
   package version and pinned dependency declarations.
+- `renderingFingerprint`: SHA-256 over supplied font-file hashes/descriptors,
+  browser version and transport. `changes.renderingChanged` flags differences.
 - `evidenceFingerprint`: SHA-256 of the saved report/config/gallery/screenshot
   manifest. The manifest lists the SHA-256 of each evidence file.
-- `options`: source-only, screenshot, offline, warning policy and timeout settings.
+- `options`: source-only, screenshot, offline, warning policy, timeout, selected
+  runtime pages, transport and supplied font metadata.
 - `archive`: the preserved run directory; null when history is disabled.
 
 Configuration and implementation objects use sorted keys for hashing. HTML and
 saved evidence use exact bytes. HTML fingerprints do not track linked local or
-remote asset bytes, fonts, browser binaries, source PDFs or mathematical truth.
+remote asset bytes, system fonts, browser binary bytes, source PDFs or mathematical truth.
+Explicit `--font-manifest` files are hashed, checked for mutations, and reflected
+in rendering/options fingerprints and saved browser evidence. Browser version is
+recorded, but the browser executable is not hashed. See the
+[common workflow](VALIDATE_AND_FIX.md) for font use evidence and reproduction.
 The history preserves validation evidence, not an executable source/asset backup.
 Check changed assets separately and inspect screenshots. Changed files during a
 run are reported as incomplete; before/after hashing is not an atomic filesystem
 snapshot and cannot detect a change that is reverted during execution.
 
 Each comparison uses the last `CHECKS_PASSED` browser run for the same canonical
-file and profile. It reports input, configuration, implementation and option
+file, profile and selected-runtime-page scope. Full-deck and scoped successful
+runs never replace each other's baseline. Separately named repaired copies have
+separate lineages; name and compare the original baseline explicitly.
+It reports input, configuration, implementation, rendering and option
 changes, before/after finding counts, runtime page counts and reveal-state counts
 where available. It is not a semantic HTML diff. A successful run with warnings is
 eligible as a baseline unless `--fail-on-warning` made it fail. Failed, incomplete

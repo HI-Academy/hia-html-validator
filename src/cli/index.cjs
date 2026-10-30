@@ -3,6 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
 const {configuration,profileFor,coverage,blockedReport,writeReport}=require('../core/cli-support.cjs');
 const {canonical,inside,protect,fingerprint,validatorFingerprint,finalise,recordReview}=require('../core/history.cjs');
+const {parsePages,readFontManifest}=require('../core/rendering.cjs');
 const pkg=require('../../package.json');
 const help=`hia-html-validator ${pkg.version}
 
@@ -18,6 +19,9 @@ Options:
   --out DIRECTORY           output directory (batch: a subdirectory per file)
   --config FILE.json        JSON overrides, merged over profile defaults
   --viewport WIDTHxHEIGHT   single viewport, e.g. 1280x800
+  --pages NUMBERS           lesson runtime pages, e.g. 44 or 2,4-6
+  --font-manifest FILE.json local font files/descriptors/checksums for this run
+  --load-mode file|memory   file default; memory requires self-contained HTML
   --static-only             source preflight only; NOT a visual pass
   --no-screenshots          run browser checks without image capture
   --offline                 block HTTP(S), WebSocket and service-worker access
@@ -37,7 +41,7 @@ function parse(argv){
  const a={files:[],profile:'auto',timeout:300000,screenshots:true};
  for(let i=0;i<argv.length;i++){
   const v=argv[i];if(v==='--'){a.files.push(...argv.slice(i+1));break;}
-  if(['--profile','--out','--config','--viewport','--timeout','--history','--log'].includes(v)){const next=argv[++i];if(!next||next.startsWith('--'))throw new Error(`Missing value for ${v}`);a[v.slice(2)]=next;}
+  if(['--profile','--out','--config','--viewport','--timeout','--history','--log','--pages','--font-manifest','--load-mode'].includes(v)){const next=argv[++i];if(!next||next.startsWith('--'))throw new Error(`Missing value for ${v}`);a[v.slice(2)]=next;}
   else if(v==='--no-screenshots')a.screenshots=false;
   else if(['--static-only','--offline','--recursive','--fail-on-warning','--no-history'].includes(v))a[v.slice(2)]=true;
   else if(v==='--help'||v==='-h')a.help=true;
@@ -47,6 +51,11 @@ function parse(argv){
  }
  if(!['auto','lesson','html'].includes(a.profile))throw new Error('--profile must be auto, lesson or html');
  if(a.history&&a['no-history'])throw new Error('--history and --no-history cannot be combined');
+ a.pages=parsePages(a.pages);
+ a['load-mode']=a['load-mode']||'file';
+ if(!['file','memory'].includes(a['load-mode']))throw new Error('--load-mode must be file or memory');
+ if(a.pages&&a['static-only'])throw new Error('--pages requires browser validation; source checks are document-wide');
+ if(a['font-manifest']&&a['static-only'])throw new Error('--font-manifest requires browser validation');
  a.timeout=Number(a.timeout);if(!Number.isInteger(a.timeout)||a.timeout<1000||a.timeout>3600000)throw new Error('--timeout must be 1000–3600000 milliseconds');
  if(a.viewport){const m=/^(\d+)x(\d+)$/.exec(a.viewport);if(!m)throw new Error('--viewport must be WIDTHxHEIGHT');a.viewport={width:Number(m[1]),height:Number(m[2])};}
  return a;
@@ -95,12 +104,14 @@ function main(argv){
  const historyDirectory=a['no-history']?null:canonical(a.history||'.hia-html-validator'),logPath=a.log?canonical(a.log):null;
  const files=enumerate(a.files,a.recursive,explicitOut,historyDirectory);if(!files.length)throw new Error('No .html or .htm files found.');
  const batch=files.length>1,outRoot=explicitOut||path.resolve('html-validation');
- const protectedPaths=files.concat(a.config?[fs.realpathSync(a.config)]:[]);
+ const fontManifest=a['font-manifest']?fs.realpathSync(a['font-manifest']):null,fonts=readFontManifest(fontManifest);
+ const protectedPaths=files.concat(a.config?[fs.realpathSync(a.config)]:[],fontManifest?[fontManifest]:[],fonts.map(f=>f.path));
  function protectOutput(target){protect(target,protectedPaths);if(historyDirectory&&inside(canonical(target),historyDirectory))throw new Error(`Report output cannot overwrite history: ${target}`);}
  if(batch)protectOutput(path.join(outRoot,'batch-summary.json'));
  // Validate every input/config/output plan before any generated file is written.
  const jobs=files.map(file=>{
   const input=fs.readFileSync(file),profile=profileFor(input.toString('utf8'),a.profile),config=configuration(a.config,profile,a.viewport);
+  if(a.pages&&profile!=='lesson')throw new Error('--pages is supported only by the lesson profile');
   const slug=path.basename(file,path.extname(file)).replace(/[^\p{L}\p{N}_.-]/gu,'-')||'document';
   const key=slug+'-'+crypto.createHash('sha256').update(file).digest('hex').slice(0,8);
   const out=batch?path.join(outRoot,key):explicitOut||path.resolve(slug+'-b35-report');
@@ -118,14 +129,14 @@ function main(argv){
  if(historyDirectory)for(const name of ['validation-log.jsonl','review-log.jsonl','.write-lock'])protect(path.join(historyDirectory,name),protectedPaths);
  if(logPath){protect(logPath,protectedPaths);if(jobs.some(j=>inside(logPath,canonical(j.out)))||(batch&&inside(logPath,canonical(outRoot)))||(historyDirectory&&inside(logPath,historyDirectory)))throw new Error('--log must be separate from report output and history directories.');}
  const engineFingerprint=validatorFingerprint();
- const options={staticOnly:!!a['static-only'],screenshots:a.screenshots,offline:!!a.offline,failOnWarning:!!a['fail-on-warning'],timeout:a.timeout};
+ const options={staticOnly:!!a['static-only'],screenshots:a.screenshots,offline:!!a.offline,failOnWarning:!!a['fail-on-warning'],timeout:a.timeout,pages:a.pages,loadMode:a['load-mode'],fonts:fonts.map(({data,...metadata})=>metadata)};
  let code=0;const results=[];
  for(const job of jobs){
   const startedAt=new Date().toISOString(),directory=fs.mkdtempSync(path.join(os.tmpdir(),'hia-validation-'));
   try{
   const resolved=path.join(directory,'resolved-config.json');fs.writeFileSync(resolved,JSON.stringify(job.config,null,2)+'\n');
   const runner=job.profile==='lesson'?'lesson.cjs':'html.cjs';
-  const args=[path.join(__dirname,'../validators',runner),job.file,'--config',resolved,'--out',directory,...(a['static-only']?['--static-only']:[]),...(!a.screenshots?['--no-screenshots']:[]),...(a.offline?['--offline']:[])];
+  const args=[path.join(__dirname,'../validators',runner),job.file,'--config',resolved,'--out',directory,'--load-mode',a['load-mode'],...(a.pages?['--pages',a.pages.join(',')]:[]),...(fontManifest?['--font-manifest',fontManifest]:[]),...(a['static-only']?['--static-only']:[]),...(!a.screenshots?['--no-screenshots']:[]),...(a.offline?['--offline']:[])];
   console.log(`Validating ${job.file} [${job.profile}]`);
   const child=spawnSync(process.execPath,args,{stdio:'pipe',encoding:'utf8',timeout:a.timeout,maxBuffer:16*1024*1024});
   let report;
@@ -136,7 +147,7 @@ function main(argv){
   }else if(fs.existsSync(reportPath)){
    // Profile runners persist the detailed blocked report before exiting 2;
    // preserve its browser diagnostics instead of replacing it with a generic CLI error.
-   report=JSON.parse(fs.readFileSync(reportPath,'utf8'));report.coverage=coverage(job.profile,!!a['static-only']);fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
+   report=JSON.parse(fs.readFileSync(reportPath,'utf8'));report.coverage={...coverage(job.profile,!!a['static-only'],a.pages),...report.coverage};fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
   }else{
    const message=child.stderr?.trim()||`Validation runner exited ${child.status} without writing a report.`;
    report=blockedReport(job.file,job.profile,message);writeReport(directory,report);
@@ -144,7 +155,12 @@ function main(argv){
   if(!fs.existsSync(job.file)||fingerprint(fs.readFileSync(job.file))!==fingerprint(job.input)){
    report=blockedReport(job.file,job.profile,'Input HTML changed during validation. Rerun on a stable file; these results cannot identify a single version.');writeReport(directory,report);
   }
-  report.coverage=coverage(job.profile,!!a['static-only']);
+  report.coverage={...coverage(job.profile,!!a['static-only'],a.pages),...report.coverage};
+  if(a.pages)report.coverage={...report.coverage,...coverage(job.profile,false,a.pages)};
+  try{
+   if(fontManifest&&fingerprint(readFontManifest(fontManifest).map(({data,...metadata})=>metadata))!==fingerprint(options.fonts))throw new Error('Font manifest/files changed during validation');
+  }catch(error){report=blockedReport(job.file,job.profile,`${error.message}; rerun with stable font assets.`);report.coverage=coverage(job.profile,false,a.pages);writeReport(directory,report);}
+  report.coverage.fullDeckValidated=job.profile==='lesson'&&!a.pages&&!a['static-only']&&report.browser.status==='COMPLETED';
   if(report.config)report.config='resolved-config.json';
   fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
   const incomplete=child.error||child.signal||child.status===2||![0,1,2].includes(child.status)||(!a['static-only']&&report.browser.status!=='COMPLETED')||report.browser.status==='BLOCKED';

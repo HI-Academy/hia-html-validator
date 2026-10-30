@@ -24,7 +24,7 @@ try {
   });
   const inventory = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" }).trim().split("\n");
   test("npm archive contains every relocated runtime component and agent docs", () => {
-    for (const name of ["bin/hia-html-validator.cjs", "src/cli/index.cjs", "src/core/cli-support.cjs", "src/core/history.cjs", "src/validators/lesson.cjs", "src/validators/html.cjs", "src/rules/complementary-rules.cjs", "src/rules/presentation-rules.cjs", "config/b35.rules.json", "templates/b35-acceptance-template.md", "README.md", "AGENTS.md", "docs/CLI_GUIDE.md", "docs/HISTORY.md", "docs/PRESENTATION_RULES.md", "tests/test-cli.cjs", "tests/test-history.cjs", "tests/test-presentation.cjs", "scripts/test.cjs"]) {
+    for (const name of ["bin/hia-html-validator.cjs", "src/cli/index.cjs", "src/core/cli-support.cjs", "src/core/history.cjs", "src/core/rendering.cjs", "src/validators/lesson.cjs", "src/validators/html.cjs", "src/rules/complementary-rules.cjs", "src/rules/presentation-rules.cjs", "config/b35.rules.json", "templates/b35-acceptance-template.md", "templates/font-manifest.example.json", "templates/presentation-repair.css", "README.md", "AGENTS.md", "docs/CLI_GUIDE.md", "docs/HISTORY.md", "docs/PRESENTATION_RULES.md", "docs/VALIDATE_AND_FIX.md", "tests/test-cli.cjs", "tests/test-history.cjs", "tests/test-presentation.cjs", "tests/test-reproducible.cjs", "tests/fixtures/font.cjs", "scripts/test.cjs"]) {
       assert.ok(inventory.includes(`package/${name}`), name);
     }
     assert.ok(!inventory.some(name => /(?:^|\/)(?:node_modules|dist|private|lessons|test-results)\//.test(name)));
@@ -54,6 +54,12 @@ try {
   });
   const environment = { ...process.env };
   delete environment.NODE_PATH;
+  test("fresh install runs the portable page/font/history regression suite", () => {
+    const file = path.join(prefix, "lib/node_modules", pkg.name, "tests/test-reproducible.cjs");
+    const result = JSON.parse(execFileSync(process.execPath, [file], { cwd: temporary, env: environment, encoding: "utf8", timeout: 180000 }));
+    assert.equal(result.failed, 0); assert.ok(result.passed >= 14);
+    console.log(`Installed portable-rendering regressions: ${result.passed} passed.`);
+  });
   function installed(args) {
     const result = spawnSync(process.execPath, [path.join(prefix, "bin", pkg.name), ...args], { cwd: temporary, env: environment, encoding: "utf8", timeout: 60000 });
     assert.equal(result.status, 0, result.stderr || result.stdout);

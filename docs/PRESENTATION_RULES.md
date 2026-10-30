@@ -6,6 +6,9 @@ identifies a review candidate, not a confirmed visual defect or automatic approv
 No screenshot image analysis, source-content rewriting or watermark removal is
 performed.
 
+Use [Reproducible validation and repair](VALIDATE_AND_FIX.md) for the common
+commands, font manifest, diagnosis/repair recipes and before/after evidence.
+
 ## Existing coverage and extensions
 
 | Issue | Coverage |
@@ -25,7 +28,9 @@ force equal step counts. It skips vertically stacked/wrapped layouts and retains
 `data-b35-allow-card-variation` for reviewed intentional differences. Flex/grid
 stretching that actually equalizes card edges is accepted.
 
-Default equation rows are `.eq`, `.formula` and `[data-b35-formula-row]`, with
+Automatic comparison recognition includes `.eq` and `[data-b35-equation]` in
+addition to `.formula`, `.work` and `[data-b35-card-formula]`.
+Default equation rows are `.qa-text-row`, `.eq`, `.formula` and `[data-b35-formula-row]`, with
 nested wrappers reduced to their innermost matching rows. A custom
 `visualReview.comparisonGroups` entry can set `rowSelector`, `cardSelector` and
 `roles`. Default roles now recognize `.work` as a formula group, `.tag` headings
@@ -54,6 +59,13 @@ At the final reveal, visible in-flow sibling blocks in `.body` or
 both 48px and 10% of the slide height. Dimensions are normalized for slide scale.
 The closest occupied bottom edge of earlier horizontally overlapping blocks
 provides the boundary, so a tall peer card is not mistaken for blank space.
+For transparent, unbordered flex/grid comparison groups matched by
+`gapContainerSelectors` (default `.two,.three,.four,[data-b35-comparison]`), the
+occupied bottom is the lowest visible in-flow child edge. This detects blank
+space inside an expanded comparison container before the next block; evidence
+includes both occupied-space and container-box gaps. Painted/bordered groups,
+direct text and marked intentional space retain the container boundary. This is
+a bounded one-level child-box inspection, not a universal whitespace detector.
 Headers, absolute/fixed decorations, hidden reveals and separate columns are
 excluded. The default general-HTML reference height is the configured viewport.
 
@@ -128,4 +140,5 @@ Run `npm run test:presentation`. Fixtures include normal and problematic layouts
 responsive/flex layouts, slide scaling, hidden/intermediate reveals, natural
 fraction/root/script geometry, repeated watermarks, configured HTML opt-in and
 intentional exceptions. They run in a browser with in-memory HTML. They do not
-validate the screenshot's original HTML, which has not been supplied.
+require the private lesson HTML or certify a particular screenshot. Run
+`npm run test:reproducible` for CLI scope, fonts, rendering evidence and history.

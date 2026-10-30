@@ -11,6 +11,7 @@
     "inlineMathEnabled": true,
     "watermarksEnabled": true,
     "flowSelectors": ".body,[data-b35-layout-flow]",
+    "gapContainerSelectors": ".two,.three,.four,[data-b35-comparison]",
     "calloutSelectors": ".note,.rule,.warning,.check,.callout,[data-b35-callout]",
     "inlineProseSelectors": "p,.note,.rule,.hint,.check,[data-b35-content-role=explanation],[data-b35-content-role=note]",
     "watermarkSelectors": ".hi-wm,.watermark,.watermark-text,[data-b35-watermark]"

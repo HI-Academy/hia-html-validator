@@ -32,6 +32,12 @@ async function main() {
     const none = rule => xs => assert.ok(!xs.some(f => !rule || f.rule === rule), JSON.stringify(xs));
     await check('large separation between method block and summary warns', flow(), has('inter-block-whitespace'));
     await check('ordinary block spacing passes', flow(24), none());
+    const expanded = (attrs = '', tall = false) => `<div data-b35-layout-flow><div class="two" ${attrs} style="height:260px;display:flex;align-items:flex-start"><div class="card" style="height:100px">First method</div><div class="card" style="height:${tall ? 250 : 100}px">Second method</div></div><aside class="note" style="margin-top:10px">The same mathematical target.</aside></div>`;
+    await check('expanded transparent comparison uses occupied card bottom', expanded(), xs => { has('inter-block-whitespace')(xs); const f=xs.find(f=>f.rule==='B35-COMPOSITION-003'); assert.equal(Math.round(f.evidence.containerGapPx),10); assert.equal(Math.round(f.evidence.gapPx),170); });
+    await check('tall child prevents false internal gap', expanded('',true), none());
+    await check('intentional writing space in expanded group is retained', expanded('data-b35-allow-empty-space'), none());
+    await check('painted comparison background keeps container boundary', expanded('style="background:navy"').replace('style="background:navy" style="','style="background:navy;'), none());
+    await check('hidden intermediate card preserves deferred-gap behavior', expanded().replace('Second method','<span data-step="1" style="visibility:hidden">Second method</span>'), none());
     await check('reviewed writing space is preserved', flow(100, 'data-b35-allow-empty-space'), none());
     await check('reviewed large-gap exception is local', flow(100, 'data-b35-allow-large-gap'), none());
     await check('intermediate reveal space does not warn', flow() + '<p data-step="1" style="visibility:hidden">Future working</p>', none());
@@ -74,6 +80,11 @@ async function main() {
     await check('flex stretch that equalizes card heights is accepted', peers('style="padding-bottom:30px"'), none('B35-LAYOUT-001'), { audit: auditVisualReview });
     await check('later equation row mismatch is detected even with equal card heights', peers(), has('comparison-equation-row-alignment'), { audit: auditVisualReview, css: '.card{height:250px}.card:last-child .eq:last-child{transform:translateY(14px)}' });
     await check('two-card top-edge mismatch is detected', peers('style="margin-top:14px"'), has('comparison-card-geometry'), { audit: auditVisualReview });
+    const eqOnly=(offset=0,attrs='')=>`<div class="two" ${attrs}><div class="card"><div class="eq" style="height:auto"><span class="qa-text-row" style="display:block;height:30px">3x = 12</span><span class="qa-text-row" style="display:block">x = 4</span></div></div><div class="card"><div class="eq" style="height:auto"><span class="qa-text-row" style="display:block;height:${30+offset}px">3y = 12</span><span class="qa-text-row" style="display:block">y = 4</span></div></div></div>`;
+    await check('eq-only comparison recognizes generated equation rows',eqOnly(20),has('comparison-equation-row-alignment'),{audit:auditVisualReview});
+    await check('aligned eq-only methods pass',eqOnly(),none('B35-LAYOUT-001'),{audit:auditVisualReview});
+    await check('reviewed eq-only card variation remains allowed',eqOnly(20,'data-b35-allow-card-variation'),none('B35-LAYOUT-001'),{audit:auditVisualReview});
+    await check('eq-only stacked mobile layout is excluded',eqOnly(20),none('B35-LAYOUT-001'),{audit:auditVisualReview,css:'.two{display:block}'});
     await check('vertically stacked responsive cards are not forced to align', peers(), none('B35-LAYOUT-001'), { audit: auditVisualReview, css: '.two{flex-direction:column}.card:last-child{height:280px}' });
     await check('intentional method-card variation remains supported', peers('style="padding-bottom:30px"', 'data-b35-allow-card-variation'), none('B35-LAYOUT-001'), { audit: auditVisualReview, css: '.two{align-items:flex-start}' });
     await check('intermediate card sizes are not judged as final', peers('style="padding-bottom:30px"'), none('B35-LAYOUT-001'), { audit: auditVisualReview, css: '.two{align-items:flex-start}', extra: '<span id="step">Step 0 / 1</span>' });

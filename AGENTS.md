@@ -14,9 +14,23 @@ These instructions help an LLM install and use this package. They apply to work 
 
 Read README.md and docs/CLI_GUIDE.md completely before installing or running the tool. Consult docs/RULES.md for the relevant rule when interpreting, tuning or repairing a finding; do not guess what a rule proves. The standard executable is `hia-html-validator`; `html-validate-b35` and `b35-validate` remain compatibility aliases.
 
+Use [docs/VALIDATE_AND_FIX.md](docs/VALIDATE_AND_FIX.md) as the common validation/
+repair workflow. Use the supported CLI rather than extracting audit functions or
+creating a page-specific harness. `--pages` selects runtime page numbers after
+merges, preserves the DOM, audits every selected forward reveal, and explicitly
+omits source-wide/page-pair/backward re-entry checks. Confirm page IDs and scope;
+do not call a scoped successful run a full-deck pass.
+
+For repeatable fonts, use an explicit local `--font-manifest` with actual family,
+weight/style and SHA256. Inspect `browser.fontEnvironment` for supplied-file hashes,
+browser version and sampled actual platform-font usage; a declared or loaded font
+is not proof of use. The manifest does not install fonts or authorise downloads.
+`--load-mode memory` is only for self-contained HTML, does not modify browser
+policies, and differs from file transport for URL/origin-dependent content.
+
 ## Identify which distribution is present
 
-1. `install.sh` beside `hia-html-validator-1.7.0.tgz`: installer bundle.
+1. `install.sh` beside `hia-html-validator-1.8.0.tgz`: installer bundle.
 2. A tarball alone: install that exact local file using npm.
 3. `package.json` beside `bin/`: package/source tree; use local npm installation and `node bin/hia-html-validator.cjs`.
 4. An installed command: check `--version` and `doctor`; avoid unnecessary reinstallation.
@@ -32,7 +46,7 @@ Do not assume the archive, dependencies or command are in the current working di
    Its default is `$HOME/.local`; `--prefix` supports a different approved location.
 4. Make a PATH change for this process/session only, or invoke the absolute executable path. Do not persist it in startup files without permission.
 5. For a tarball-only installation:
-   `npm install --global --prefix "$HOME/.local" "/absolute/path/to/hia-html-validator-1.7.0.tgz"`
+   `npm install --global --prefix "$HOME/.local" "/absolute/path/to/hia-html-validator-1.8.0.tgz"`
    Then invoke `"$HOME/.local/bin/hia-html-validator" setup`.
 6. For a source/package tree, run `npm install` there, then `node bin/hia-html-validator.cjs setup`; a global installation is unnecessary.
 7. Check `--version` and `doctor`. Then run an actual browser validation on an authorised trusted input; doctor alone is not a successful launch test.
@@ -101,6 +115,10 @@ If the human asks for HTML fixes:
 2. Create a separately named repaired copy unless in-place editing is explicitly requested.
 3. Preserve mathematical values, variables, signs, units, questions, approved diagrams and reveal order. Surface missing mathematical premises instead of inventing them silently.
 4. Revalidate the repaired copy with the same settings, review its rendered evidence, and report changed pages plus before/after results.
+   Include page selection, font hashes, network mode, transport and browser
+   version in those settings. Distinguish all-state counts from final-state
+   counts and repeated state findings from distinct defects. Preserve the named
+   original baseline when a repaired copy has a different path/history lineage.
 5. Keep unresolved warnings visible. Never fabricate reviewer identity, screenshots, evidence references, fingerprints or approval timestamps.
 
 If the human asks to change validation rules, add proportional regression tests, retain actionable guidance/evidence, and run the relevant tests. Do not claim a new rule measures pixels when it only measures DOM/styles.

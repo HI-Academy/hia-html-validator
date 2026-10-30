@@ -34,10 +34,11 @@ function profileFor(source,requested){
  if(requested!=='auto')return requested;
  return /<(?:section|div)\b[^>]*\bclass\s*=\s*(["'])[^"']*\bslide\b[^"']*\1/i.test(source)?'lesson':'html';
 }
-function coverage(profile,staticOnly){return {
+function coverage(profile,staticOnly,pages=null){return {
  profile,
- automated:staticOnly?'Source-only preflight; NO rendered layout checks':profile==='lesson'?'B35 lesson navigation/reveals, DOM layout, SVG and mathematical presentation':'Current rendered document at one viewport; DOM layout, resources, SVG and mathematical presentation',
- notCovered:profile==='html'?['Hidden/interactive states, multi-page slide navigation and nested frame/shadow-root contents','HTML/CSS standards conformance and mathematical proof','AI screenshot analysis and automatic visual acceptance']:['AI screenshot analysis and automatic visual acceptance','External source fidelity and mathematical proof'],
+ scope:pages?'SELECTED_RUNTIME_PAGES':profile==='lesson'?'FULL_LESSON':'CURRENT_DOCUMENT',selectedPages:pages,fullDeckValidated:profile==='lesson'&&!staticOnly&&!pages,
+ automated:staticOnly?'Source-only preflight; NO rendered layout checks':pages?`Selected lesson runtime pages ${pages.join(', ')} and their forward reveal states; other pages may be navigated to reach them but are not audited`:profile==='lesson'?'B35 lesson navigation/reveals, DOM layout, SVG and mathematical presentation':'Current rendered document at one viewport; DOM layout, resources, SVG and mathematical presentation',
+ notCovered:profile==='html'?['Hidden/interactive states, multi-page slide navigation and nested frame/shadow-root contents','HTML/CSS standards conformance and mathematical proof','AI screenshot analysis and automatic visual acceptance']:[...(pages?['Unselected pages, source-wide checks, page-pair and backward re-entry audits']:[]),'AI screenshot analysis and automatic visual acceptance','External source fidelity and mathematical proof'],
  manualReviewRequired:true
 };}
 function blockedReport(file,profile,message){return {schemaVersion:1,file,fileName:path.basename(file),generatedAt:new Date().toISOString(),coverage:coverage(profile,false),summary:{errors:1,warnings:0,overall:'BLOCKED — validation incomplete',manualAcceptanceRequired:true},browser:{status:'BLOCKED',reason:message},findings:[{rule:'CLI-RUNTIME-001',severity:'error',selector:null,message,expected:'The requested validation completes before a result is accepted.',suggestedAction:'Run hia-html-validator doctor; install Chromium with hia-html-validator setup. Check the input and rerun. For a timeout, inspect page scripts and increase --timeout only if appropriate.',verification:['Confirm browser status COMPLETED and inspect the fresh report.'],constraints:['Do not treat partial or previous results as a successful validation.']}],screenshots:[]};}

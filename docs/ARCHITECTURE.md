@@ -8,6 +8,15 @@ This is a plain CommonJS/Node.js command-line package. There is no compilation s
 
 The child runner is either `src/validators/lesson.cjs` (compatible B35 lesson navigation and reveals) or `src/validators/html.cjs` (one current document state). The runners call the browser audit functions in `src/rules/`. These functions must remain self-contained when serialized into the browser by Playwright: do not add Node imports or references to module-local variables inside the evaluated function.
 
+`src/core/rendering.cjs` owns runtime-page parsing/metadata, explicit file/memory
+loading, local font-manifest validation and bounded platform-font evidence.
+Page-scoped lesson runs retain the DOM, navigate through preceding states without
+running their layout audits, and omit source-wide/page-pair/backward re-entry
+checks. Their successful history baselines are independent of full-deck runs.
+Font manifests register FontFace objects in the isolated browser run; no OS font
+installation, network download or input rewriting occurs. Browser version and
+supplied font-file metadata contribute to a rendering fingerprint.
+
 The CLI stages each run in a fresh temporary directory before publishing the
 latest reports. `src/core/history.cjs` fingerprints the HTML, resolved settings,
 validator implementation and saved evidence, archives unique runs, appends

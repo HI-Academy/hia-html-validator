@@ -1,5 +1,8 @@
 # Detailed validation rules
 
+For a single procedure connecting these rules to fonts, scope, repairs and
+before/after evidence, use [Reproducible validation and repair](VALIDATE_AND_FIX.md).
+
 ## General lesson content contracts
 
 The following rules use shared component selectors or explicit declarations,

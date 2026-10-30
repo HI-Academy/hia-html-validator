@@ -1,0 +1,34 @@
+/* Opt-in starting point, not an automatic fix. See docs/VALIDATE_AND_FIX.md.
+   Put data-b35-repair-scope on the component whose repair was authorised;
+   annotate only its prose, native MathML and comparison groups as appropriate.
+   Adapt values to the design system and inspect every affected reveal. */
+[data-b35-repair-scope] {
+  --b35-prose-family: Nunito, Arial, sans-serif;
+  --b35-math-family: "STIX Two Math", math;
+  --b35-comparison-gap: 12px;
+  --b35-math-ink-clearance: .125em;
+}
+[data-b35-repair-scope] [data-b35-prose] {
+  font-family: var(--b35-prose-family);
+}
+[data-b35-repair-scope] [data-b35-comparison] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--b35-comparison-gap);
+  flex: 0 0 auto;
+  align-items: stretch;
+}
+[data-b35-repair-scope] [data-b35-comparison] > .card {
+  align-self: stretch;
+  height: auto;
+}
+[data-b35-repair-scope] math {
+  font-family: var(--b35-math-family);
+  font-weight: 400;
+  vertical-align: baseline;
+  padding-block: 0 var(--b35-math-ink-clearance);
+}
+/* Do not flatten fraction/script sizes, change reveal visibility, suppress
+   overflow, remove branding, or add rule exemptions here. Existing inline
+   !important/script styles need a reviewed source fix. This template is not
+   intended for KaTeX/MathJax renderer internals or every responsive layout. */

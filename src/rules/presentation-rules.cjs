@@ -145,13 +145,20 @@ function auditPresentation(config) {
       const blocks = [...flow.children].filter(node => visible(node) && !node.matches(excluded) && !node.closest(decorations) && !['absolute', 'fixed'].includes(getComputedStyle(node).position) && (node.textContent.trim() || node.querySelector('svg,img,canvas'))).sort((a, b) => rect(a).top - rect(b).top);
       const referenceHeight = config.documentMode ? config.viewport.height : rect(slide).height / scale;
       const maximum = Math.max(limits.presentationMaximumGapPx ?? 48, referenceHeight * (limits.presentationMaximumGapRatio ?? .10));
+      const occupiedBoundary = node => {
+        const box = rect(node), style = getComputedStyle(node);
+        if (!node.matches(settings.gapContainerSelectors || '.two,.three,.four,[data-b35-comparison]') || !['grid','flex'].includes(style.display) || !/^(transparent|rgba\([^)]*,\s*0\))$/.test(style.backgroundColor) || style.backgroundImage !== 'none' || ['Top','Bottom','Left','Right'].some(side=>parseFloat(style['border'+side+'Width'])>0) || [...node.childNodes].some(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim())) return { bottom: box.bottom, selectors: [pathFor(node)] };
+        const children = [...node.children].filter(n=>visible(n)&&!n.matches(excluded)&&!n.closest(decorations)&&!['absolute','fixed'].includes(getComputedStyle(n).position));
+        if (!children.length || children.some(n=>n.closest('[data-b35-allow-empty-space],[data-b35-allow-large-gap]'))) return { bottom: box.bottom, selectors: [pathFor(node)] };
+        return { bottom: Math.max(...children.map(n=>rect(n).bottom)), selectors: children.map(pathFor) };
+      };
       for (let i = 1; i < blocks.length; i++) {
         const b = rect(blocks[i]);
-        const previous = blocks.slice(0, i).filter(node => { const a = rect(node); return Math.min(a.right, b.right) - Math.max(a.left, b.left) > .25 * Math.min(a.width, b.width); }).sort((a, c) => rect(c).bottom - rect(a).bottom)[0];
+        const previous = blocks.slice(0, i).filter(node => { const a = rect(node); return Math.min(a.right, b.right) - Math.max(a.left, b.left) > .25 * Math.min(a.width, b.width); }).sort((a, c) => occupiedBoundary(c).bottom - occupiedBoundary(a).bottom)[0];
         if (!previous || previous.closest('[data-b35-allow-large-gap],[data-b35-allow-empty-space]') || blocks[i].closest('[data-b35-allow-large-gap],[data-b35-allow-empty-space]')) continue;
-        const gap = (b.top - rect(previous).bottom) / scale;
+        const occupied = occupiedBoundary(previous), gap = (b.top - occupied.bottom) / scale;
         if (gap > maximum) emit('B35-COMPOSITION-003', 'Separate teaching blocks leave a large vertical gap at the final reveal.', flow,
-          { kind: 'inter-block-whitespace', gapPx: gap, maximumPx: maximum, previousSelector: pathFor(previous), nextSelector: pathFor(blocks[i]) },
+          { kind: 'inter-block-whitespace', gapPx: gap, containerGapPx: (b.top-rect(previous).bottom)/scale, maximumPx: maximum, previousSelector: pathFor(previous), previousContentSelectors: occupied.selectors, nextSelector: pathFor(blocks[i]) },
           'Related teaching blocks have deliberate spacing and a clear visual connection.',
           'Review fixed heights, spacer rows, margins and distributed flex/grid space. Tighten unnecessary gaps; retain explicitly intended writing or pause space.');
       }

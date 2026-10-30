@@ -4,6 +4,10 @@ Install once, then run `hia-html-validator "your-file.html"` from Terminal. The 
 
 The package, project and primary command are named `hia-html-validator`. The earlier `html-validate-b35` and `b35-validate` commands remain compatibility aliases. Existing B35 rule IDs, configuration and report formats are unchanged.
 
+For the shared baseline → diagnose → repair → revalidate workflow, start with
+[Reproducible validation and repair](docs/VALIDATE_AND_FIX.md). It consolidates
+font manifests, page scope, rule-guided fixes, preserved content and evidence.
+
 For a human-led installation, follow this README. For an LLM-led installation, ask the assistant to read [AGENTS.md](AGENTS.md), the standard agent-discovery filename, and follow the workflow there. The complete command reference is [CLI_GUIDE.md](docs/CLI_GUIDE.md); detailed validation rules are in [RULES.md](docs/RULES.md).
 
 ## From this GitHub repository
@@ -72,7 +76,7 @@ export PATH="/absolute/path/to/validator-prefix/bin:$PATH"
 If only the npm tarball was supplied, install it without the wrapper:
 
 ```bash
-npm install --global --prefix "$HOME/.local" ./hia-html-validator-1.7.0.tgz
+npm install --global --prefix "$HOME/.local" ./hia-html-validator-1.8.0.tgz
 export PATH="$HOME/.local/bin:$PATH"
 hia-html-validator setup
 hia-html-validator doctor
@@ -122,6 +126,20 @@ Batch mode creates separate per-file folders and a `batch-summary.json`.
 hia-html-validator page.html --profile html --viewport 1280x800
 hia-html-validator lesson.html --profile lesson --viewport 960x540
 ```
+
+Validate selected runtime pages with portable local fonts:
+
+```bash
+hia-html-validator lesson.html --pages 44 --viewport 1557x874 --font-manifest ./font-manifest.json --out ./results/page44
+```
+
+Selected-page runs keep the deck intact, traverse forward to the selection and
+audit only its reveal states. They omit source-wide, page-pair and backward
+re-entry checks; history baselines remain separate from full-deck runs. Font
+manifests load local fonts into the browser and record exact hashes plus sampled
+actual glyph-font usage, without changing OS fonts or input HTML. Use
+`--load-mode memory` only for self-contained HTML; file loading remains the
+default for relative assets. See the [workflow](docs/VALIDATE_AND_FIX.md).
 
 General mode does **not** traverse arbitrary interactive/hidden slides, iframes or shadow DOM. Do not switch a broken lesson to general mode merely to obtain a pass. Neither profile certifies HTML/CSS standards conformance, mathematical correctness or source fidelity.
 

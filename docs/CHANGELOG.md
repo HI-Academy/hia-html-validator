@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.8.0 — Reproducible validation and repair
+
+- Consolidate a shared validation/repair workflow, reusable opt-in CSS and font
+  manifest schema, linked from human/agent and detailed rule guides.
+- Add lesson `--pages` runtime scope with full selected reveal capture and
+  scope-aware history; preserve the full input DOM and disclose omitted checks.
+- Add local `--font-manifest` files with checksums, FontFace loading, bounded
+  actual glyph-font evidence and rendering fingerprints. No font downloads,
+  system font writes or automatic HTML repairs.
+- Add explicit self-contained `--load-mode memory`, keeping file loading default.
+- Detect whitespace inside expanded transparent comparison groups; recognise
+  `.eq` groups and generated `.qa-text-row` rows. Preserve review exceptions.
+- Expose final-state finding counts separately from repeated all-state findings.
+  Preserve resource failures at their configured severity without duplicating
+  generic resource console errors as script exceptions. Ruleset is html-validation/3.
+- Add synthetic regression coverage for these patterns and CLI/font/history paths.
+
 ## 1.7.0 — Validation history and change review
 
 - Add configurable presentation-review warnings for large inter-block gaps,
