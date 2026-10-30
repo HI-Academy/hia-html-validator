@@ -14,6 +14,23 @@ Tests use trusted, synthetic fixtures and launch Chromium. They require the pack
 
 Focused suites are available as `npm run test:cli`, `test:svg`, `test:styles`, `test:models`, `test:visual-review`, `test:page-pairs`, `test:complementary`, `test:reusability`, and `test:structure`. All are included in `npm test`. Tests return a nonzero status on failure.
 
+`npm run test:history` exercises fingerprints, version/baseline comparisons,
+append-only records, review assertions, crash handling and path protection with
+synthetic runner outcomes. It needs no browser. Actual browser/history
+integration is covered by `test:cli`. Both suites are included in `npm test`.
+
+`npm run test:presentation` covers comparison-card alignment, explanatory prose,
+large gaps, short callout endings, inline mathematical placement and watermark
+interference using trusted in-memory browser fixtures. See
+[presentation rules](PRESENTATION_RULES.md) for selectors, thresholds and limits.
+
+`npm run test:reproducible` covers the public CLI with self-contained synthetic
+documents: runtime page selection, full/scope baseline separation, every selected
+reveal screenshot, checksummed font manifests, actual platform glyph-font usage,
+font changes, invalid input and memory-transport limitations. Its tiny font is a
+self-authored triangle/space fixture; no private lesson or production font is
+needed. Follow [the common workflow](VALIDATE_AND_FIX.md) for real inputs.
+
 For a new check, implement its browser audit under `src/rules/` (or source audit in the relevant runner), wire it into the correct profile, add configurable defaults under `config/`, and add positive, negative and intentional-exception regression cases. Preserve LLM-actionable location, observed/expected evidence, proposed action, verification and limitations. Do not clear warnings by weakening existing assertions.
 
 ## Package verification

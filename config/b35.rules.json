@@ -4,6 +4,18 @@
     "enabled": true,
     "decorativeSelectors": ".hi-wm,.watermark,.watermark-text"
   },
+  "presentationReview": {
+    "enabled": true,
+    "largeGapsEnabled": true,
+    "shortLinesEnabled": true,
+    "inlineMathEnabled": true,
+    "watermarksEnabled": true,
+    "flowSelectors": ".body,[data-b35-layout-flow]",
+    "gapContainerSelectors": ".two,.three,.four,[data-b35-comparison]",
+    "calloutSelectors": ".note,.rule,.warning,.check,.callout,[data-b35-callout]",
+    "inlineProseSelectors": "p,.note,.rule,.hint,.check,[data-b35-content-role=explanation],[data-b35-content-role=note]",
+    "watermarkSelectors": ".hi-wm,.watermark,.watermark-text,[data-b35-watermark]"
+  },
   "answerSequence": {
     "enabled": true,
     "reentry": true,
@@ -60,6 +72,17 @@
     "compositionBalanceMinimumDifference": 0.2,
     "compositionBalanceMaximumRatio": 1.8,
     "visualMinimumBlockGapPx": 2,
+    "presentationMaximumGapPx": 48,
+    "presentationMaximumGapRatio": 0.1,
+    "calloutShortLineMaximumWords": 3,
+    "calloutShortLineMaximumRatio": 0.28,
+    "inlineMathBaselineTolerancePx": 4,
+    "inlineMathBaselineToleranceEm": 0.2,
+    "inlineMathMaximumGapPx": 12,
+    "inlineMathMaximumGapEm": 0.65,
+    "inlineMathPunctuationGapEm": 0.25,
+    "watermarkReviewMinimumOpacity": 0.08,
+    "watermarkMinimumContentIntersections": 3,
     "navigatorClearancePx": 2,
     "minimumReadableFontPx": 10,
     "minimumDiagramFontPx": 11,
@@ -125,7 +148,7 @@
   "complementaryChecks": {
     "proseTypography": {
       "enabled": true,
-      "selectors": ".prompt,.practice-question,.hint,.note,.rule,.warning,.check,[data-b35-content-role=question],[data-b35-content-role=hint],[data-b35-content-role=note]",
+      "selectors": ".prompt,.practice-question,.hint,.note,.rule,.warning,.check,.card p,.summary-card p,.caption,[data-b35-card-example],[data-b35-comparison-caption],[data-b35-content-role=question],[data-b35-content-role=hint],[data-b35-content-role=note]",
       "fontFamily": "Nunito",
       "minimumWeightDifference": 200,
       "allowedInlineMathPairs": [
@@ -238,6 +261,7 @@
     "layoutStabilitySeverity": "warning",
     "svgAccessibleNameSeverity": "off",
     "visualReviewSeverity": "warning",
+    "presentationReviewSeverity": "warning",
     "footerTypographySeverity": "warning",
     "footerAlignmentSeverity": "warning",
     "symbolRenderingSeverity": "warning",

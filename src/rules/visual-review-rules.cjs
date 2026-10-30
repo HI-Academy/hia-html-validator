@@ -84,8 +84,8 @@ function auditVisualReview(config) {
     };
     const review=(rule,message,node,evidence)=>emit(rule,config.policy?.visualReviewSeverity??"warning",message,node,evidence);
     const finalState=()=>{
-      const match=/Step\s+(\d+)\s*\/\s*(\d+)/i.exec(document.querySelector("#step")?.textContent||"");
-      return !match||Number(match[1])===Number(match[2]);
+      const match=/Step\s+(\d+)\s*(?:\/|of)\s*(\d+)/i.exec(document.querySelector("#step,#step-badge")?.textContent||"");
+      return (!match||Number(match[1])===Number(match[2]))&&![...slide.querySelectorAll(config.selectors.reveals||'[data-step]')].some(node=>!visible(node));
     };
     const semantic="math,.frac,.katex,mjx-container";
 
@@ -365,17 +365,42 @@ function auditVisualReview(config) {
     // headings, vertically stacked practice cards and hidden roles are excluded.
     const comparisonGroups=[];
     const declaredGroups=settings.comparisonGroups||[];
-    const groups=new Set([...slide.querySelectorAll(".three,.four,[data-b35-comparison]"),...declaredGroups.flatMap(model=>[...slide.querySelectorAll(model.selector)])]);
+    const groups=new Set([...slide.querySelectorAll(".two,.three,.four,[data-b35-comparison]"),...declaredGroups.flatMap(model=>[...slide.querySelectorAll(model.selector)])]);
     for(const group of groups) {
       if(!visible(group)||group.closest("[data-b35-allow-card-variation]"))continue;
       const model=declaredGroups.find(item=>group.matches(item.selector));
       const cards=[...group.querySelectorAll(model?.cardSelector||":scope > .card,:scope > .summary-card")].filter(visible);
       if(cards.length<2)continue;
       const cardBoxes=cards.map(boxFor);
-      if(Math.max(...cardBoxes.map(box=>box.top))-Math.min(...cardBoxes.map(box=>box.top))>(limits.cardAlignmentTolerancePx??8)*scale)continue;
-      if(!model&&!group.hasAttribute("data-b35-comparison")&&!cards.every(card=>card.querySelector(".formula,[data-b35-card-formula]")))continue;
+      const sortedBoxes=[...cardBoxes].sort((a,b)=>a.left-b.left);
+      if(sortedBoxes.some((box,i)=>i&&(box.left<sortedBoxes[i-1].right-1||Math.min(box.bottom,sortedBoxes[i-1].bottom)-Math.max(box.top,sortedBoxes[i-1].top)<.5*Math.min(box.height,sortedBoxes[i-1].height))))continue;
+      if(!model&&!group.hasAttribute("data-b35-comparison")&&!cards.every(card=>card.querySelector(".formula,.work,.eq,[data-b35-card-formula],[data-b35-equation]")))continue;
       comparisonGroups.push({group,cards});
-      const roles=model?.roles||{heading:"h3,[data-b35-card-heading]",formula:".formula,[data-b35-card-formula]",example:".note,[data-b35-card-example]"};
+      const alignmentReview=(message,evidence)=>{
+        review('B35-LAYOUT-001',message,group,evidence);
+        const finding=issues.at(-1);
+        if(finding?.rule==='B35-LAYOUT-001'&&finding.evidence===evidence)Object.assign(finding,{
+          expected:'Comparable side-by-side methods align their card edges, corresponding equation rows and captions.',
+          suggestedAction:'Use shared card sizing and corresponding row tracks or spacing. Preserve mathematical steps and intentional differences; document reviewed card variation.',
+          confidence:'Rendered CSS boxes in a recognized comparison group; matching row indices do not prove semantic equivalence.',
+          verification:['Inspect both methods after the final reveal at the target viewport.','Recheck after font, viewport or equation changes.'],
+          constraints:['Review warning only; vertically stacked/responsive cards and unequal row counts are not forced to match.','Use data-b35-allow-card-variation for a reviewed intentional variation.']});
+      };
+      if(finalState()){
+        const spread=key=>(Math.max(...cardBoxes.map(b=>b[key]))-Math.min(...cardBoxes.map(b=>b[key])))/scale;
+        if(['top','bottom','height'].some(key=>spread(key)>(limits.cardAlignmentTolerancePx??8)))alignmentReview('Matching comparison cards have inconsistent top/bottom edges or heights.',
+          {kind:'comparison-card-geometry',measurements:cardBoxes.map((b,i)=>({selector:pathFor(cards[i]),top:b.top/scale,bottom:b.bottom/scale,height:b.height/scale}))});
+        const rows=cards.map(card=>{
+          const nodes=[...card.querySelectorAll(model?.rowSelector||'.qa-text-row,.eq,.formula,[data-b35-formula-row]')].filter(visible);
+          return nodes.filter(node=>!nodes.some(other=>other!==node&&node.contains(other)));
+        });
+        if(rows[0].length>=2&&rows.every(items=>items.length===rows[0].length))for(let index=0;index<rows[0].length;index++){
+          const samples=rows.map((items,i)=>({selector:pathFor(items[index]),top:(boxFor(items[index]).top-cardBoxes[i].top)/scale,bottom:(boxFor(items[index]).bottom-cardBoxes[i].top)/scale}));
+          if(Math.max(...samples.map(s=>s.top))-Math.min(...samples.map(s=>s.top))>(limits.cardAlignmentTolerancePx??8))alignmentReview(`Corresponding equation row ${index+1} is vertically misaligned between comparison cards.`,
+            {kind:'comparison-equation-row-alignment',row:index+1,measurements:samples});
+        }
+      }
+      const roles=model?.roles||{heading:"h3,.tag,[data-b35-card-heading]",formula:".formula,.work,.eq,[data-b35-card-formula]",example:".note,.caption,p,[data-b35-card-example]"};
       for(const [role,query]of Object.entries(roles)) {
         const samples=cards.map(card=>{
           const node=[...card.querySelectorAll(query)].find(visible);

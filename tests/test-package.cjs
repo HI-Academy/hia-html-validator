@@ -24,7 +24,7 @@ try {
   });
   const inventory = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" }).trim().split("\n");
   test("npm archive contains every relocated runtime component and agent docs", () => {
-    for (const name of ["bin/hia-html-validator.cjs", "src/cli/index.cjs", "src/core/cli-support.cjs", "src/validators/lesson.cjs", "src/validators/html.cjs", "src/rules/complementary-rules.cjs", "config/b35.rules.json", "templates/b35-acceptance-template.md", "README.md", "AGENTS.md", "docs/CLI_GUIDE.md", "tests/test-cli.cjs", "scripts/test.cjs"]) {
+    for (const name of ["bin/hia-html-validator.cjs", "src/cli/index.cjs", "src/core/cli-support.cjs", "src/core/history.cjs", "src/core/rendering.cjs", "src/validators/lesson.cjs", "src/validators/html.cjs", "src/rules/complementary-rules.cjs", "src/rules/presentation-rules.cjs", "config/b35.rules.json", "templates/b35-acceptance-template.md", "templates/font-manifest.example.json", "templates/presentation-repair.css", "README.md", "AGENTS.md", "docs/CLI_GUIDE.md", "docs/HISTORY.md", "docs/PRESENTATION_RULES.md", "docs/VALIDATE_AND_FIX.md", "tests/test-cli.cjs", "tests/test-history.cjs", "tests/test-presentation.cjs", "tests/test-reproducible.cjs", "tests/fixtures/font.cjs", "scripts/test.cjs"]) {
       assert.ok(inventory.includes(`package/${name}`), name);
     }
     assert.ok(!inventory.some(name => /(?:^|\/)(?:node_modules|dist|private|lessons|test-results)\//.test(name)));
@@ -54,6 +54,12 @@ try {
   });
   const environment = { ...process.env };
   delete environment.NODE_PATH;
+  test("fresh install runs the portable page/font/history regression suite", () => {
+    const file = path.join(prefix, "lib/node_modules", pkg.name, "tests/test-reproducible.cjs");
+    const result = JSON.parse(execFileSync(process.execPath, [file], { cwd: temporary, env: environment, encoding: "utf8", timeout: 180000 }));
+    assert.equal(result.failed, 0); assert.ok(result.passed >= 14);
+    console.log(`Installed portable-rendering regressions: ${result.passed} passed.`);
+  });
   function installed(args) {
     const result = spawnSync(process.execPath, [path.join(prefix, "bin", pkg.name), ...args], { cwd: temporary, env: environment, encoding: "utf8", timeout: 60000 });
     assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -64,6 +70,17 @@ try {
       const result = spawnSync(process.execPath, [path.join(prefix, "bin", name), "--version"], { cwd: temporary, env: environment, encoding: "utf8" });
       assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout.trim(), pkg.version);
     }
+  });
+  test("fresh install records source preflight history without claiming rendered success", () => {
+    const input = path.join(temporary, "preflight fixture.html");
+    fs.writeFileSync(input, '<!doctype html><html><title>Preflight smoke</title><body><p>Trusted fixture</p></body></html>');
+    const out = path.join(temporary, "preflight report");
+    installed([input, "--static-only", "--out", out]);
+    const run = JSON.parse(fs.readFileSync(path.join(out, "run.json")));
+    assert.equal(run.status, "PREFLIGHT_PASSED");
+    assert.equal(run.manualApproval, "NOT_REVIEWED");
+    assert.ok(fs.existsSync(path.join(run.archive, "checks.jsonl")));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(run.archive, "change-review.json"))).status, "NEEDS_REVIEW");
   });
   test("installed dependency and browser availability checks work", () => {
     const doctor = JSON.parse(installed(["doctor"]).stdout);
@@ -79,6 +96,11 @@ try {
     assert.equal(report.coverage.profile, "html"); assert.equal(report.browser.status, "COMPLETED");
     assert.equal(report.summary.errors, 0); assert.ok(fs.existsSync(path.join(out, "screenshots/document.png")));
     assert.equal(fs.readFileSync(input, "utf8"), html);
+    const run = JSON.parse(fs.readFileSync(path.join(out, "run.json")));
+    assert.equal(run.status, "CHECKS_PASSED");
+    assert.ok(fs.existsSync(path.join(run.archive, "screenshots/document.png")));
+    assert.ok(fs.existsSync(path.join(run.archive, "checks.jsonl")));
+    assert.ok(fs.existsSync(path.join(run.archive, "change-review.json")));
   });
   test("fresh install resolves the moved lesson runner and default configuration", () => {
     const input = path.join(temporary, "trusted lesson.html");

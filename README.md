@@ -4,6 +4,10 @@ Install once, then run `hia-html-validator "your-file.html"` from Terminal. The 
 
 The package, project and primary command are named `hia-html-validator`. The earlier `html-validate-b35` and `b35-validate` commands remain compatibility aliases. Existing B35 rule IDs, configuration and report formats are unchanged.
 
+For the shared baseline → diagnose → repair → revalidate workflow, start with
+[Reproducible validation and repair](docs/VALIDATE_AND_FIX.md). It consolidates
+font manifests, page scope, rule-guided fixes, preserved content and evidence.
+
 For a human-led installation, follow this README. For an LLM-led installation, ask the assistant to read [AGENTS.md](AGENTS.md), the standard agent-discovery filename, and follow the workflow there. The complete command reference is [CLI_GUIDE.md](docs/CLI_GUIDE.md); detailed validation rules are in [RULES.md](docs/RULES.md).
 
 ## From this GitHub repository
@@ -72,7 +76,7 @@ export PATH="/absolute/path/to/validator-prefix/bin:$PATH"
 If only the npm tarball was supplied, install it without the wrapper:
 
 ```bash
-npm install --global --prefix "$HOME/.local" ./hia-html-validator-1.6.1.tgz
+npm install --global --prefix "$HOME/.local" ./hia-html-validator-1.8.0.tgz
 export PATH="$HOME/.local/bin:$PATH"
 hia-html-validator setup
 hia-html-validator doctor
@@ -123,6 +127,20 @@ hia-html-validator page.html --profile html --viewport 1280x800
 hia-html-validator lesson.html --profile lesson --viewport 960x540
 ```
 
+Validate selected runtime pages with portable local fonts:
+
+```bash
+hia-html-validator lesson.html --pages 44 --viewport 1557x874 --font-manifest ./font-manifest.json --out ./results/page44
+```
+
+Selected-page runs keep the deck intact, traverse forward to the selection and
+audit only its reveal states. They omit source-wide, page-pair and backward
+re-entry checks; history baselines remain separate from full-deck runs. Font
+manifests load local fonts into the browser and record exact hashes plus sampled
+actual glyph-font usage, without changing OS fonts or input HTML. Use
+`--load-mode memory` only for self-contained HTML; file loading remains the
+default for relative assets. See the [workflow](docs/VALIDATE_AND_FIX.md).
+
 General mode does **not** traverse arbitrary interactive/hidden slides, iframes or shadow DOM. Do not switch a broken lesson to general mode merely to obtain a pass. Neither profile certifies HTML/CSS standards conformance, mathematical correctness or source fidelity.
 
 ## 4. Read the results
@@ -132,10 +150,26 @@ General mode does **not** traverse arbitrary interactive/hidden slides, iframes 
 - `visual-review.html` and `screenshots/`: rendered evidence when capture is enabled.
 - `run.json`: package version, selected profile and exit status.
 - `resolved-config.json`: effective settings used for this run.
+- `checks.jsonl`: overall check outcome (including passes) and actual findings.
+- `change-review.json` and `change-review.md`: version-bound review draft and
+  comparison with the previous successful browser validation.
+
+Runs are automatically logged and archived under `.hia-html-validator/` in the
+working directory, including reports and screenshots. Unchanged HTML retains its
+document version; changed HTML receives a new version. Use `--history DIRECTORY`
+to share a history location across runs, `--log FILE.jsonl` for an additional
+append-only check log, or `--no-history` to omit persistent history. Separately
+recorded reviews remain tied to the exact run and evidence. See
+[validation history and change review](docs/HISTORY.md) for the workflow and limits.
 
 Exit code **0** means no automated errors, not visual acceptance. **1** means findings (also warnings when `--fail-on-warning` is used). **2** means invalid/incomplete validation and must not be accepted as a pass.
 
 Radical/fraction-bar warnings can remain `review-required`: matching CSS font weights do not prove matching drawn strokes. No AI screenshot analysis, automatic approval, automatic fixes or accessibility audit is performed.
+
+Lesson checks also review large gaps between blocks, short callout endings,
+comparison-card alignment, inline mathematical placement and watermark
+intersections. These are configurable review warnings; see the
+[presentation rules](docs/PRESENTATION_RULES.md) for coverage and exceptions.
 
 ## 5. Useful options and configuration
 

@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.8.0 — Reproducible validation and repair
+
+- Consolidate a shared validation/repair workflow, reusable opt-in CSS and font
+  manifest schema, linked from human/agent and detailed rule guides.
+- Add lesson `--pages` runtime scope with full selected reveal capture and
+  scope-aware history; preserve the full input DOM and disclose omitted checks.
+- Add local `--font-manifest` files with checksums, FontFace loading, bounded
+  actual glyph-font evidence and rendering fingerprints. No font downloads,
+  system font writes or automatic HTML repairs.
+- Add explicit self-contained `--load-mode memory`, keeping file loading default.
+- Detect whitespace inside expanded transparent comparison groups; recognise
+  `.eq` groups and generated `.qa-text-row` rows. Preserve review exceptions.
+- Expose final-state finding counts separately from repeated all-state findings.
+  Preserve resource failures at their configured severity without duplicating
+  generic resource console errors as script exceptions. Ruleset is html-validation/3.
+- Add synthetic regression coverage for these patterns and CLI/font/history paths.
+
+## 1.7.0 — Validation history and change review
+
+- Add configurable presentation-review warnings for large inter-block gaps,
+  short final callout lines, displaced/spaced inline maths and watermark
+  intersections. Extend existing comparison-card checks to two-method layouts,
+  card edges and repeated equation rows; cover explanatory card prose through
+  the existing prose-family rule. Preserve intentional-layout exceptions and
+  fraction/root/script geometry. Update ruleVersion to html-validation/2.
+
+- Automatically archive unique runs and append successful validations, failures,
+  incomplete execution and source-only preflights to a local history log.
+- Track document versions, run IDs, UTC timestamps, package/check versions and
+  exact input/configuration/validator/evidence fingerprints.
+- Generate change-review records against the last successful browser run per
+  input/profile; record separate evidence-bound AI/human review assertions.
+- Add `--history`, `--no-history`, `--log` and `record-review`; retain rule IDs,
+  diagnostic evidence and exit-code meanings.
+- Stage fresh output per run so a crashed runner cannot reuse an earlier pass or
+  archived screenshot; flag input changes during execution as incomplete.
+- Add history, review, failure and input-protection regressions and documentation.
+
 ## 1.6.1 — Project structure
 
 - Separate CLI, orchestration helpers, profile runners and browser rules under src/.

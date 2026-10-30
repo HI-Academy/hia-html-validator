@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "fonts": [
+    {"family": "Nunito", "path": "fonts/Nunito[wght].ttf", "weight": "200 900"},
+    {"family": "Nunito", "path": "fonts/Nunito-Italic[wght].ttf", "weight": "200 900", "style": "italic"},
+    {"family": "STIX Two Math", "path": "fonts/STIXTwoMath-Regular.ttf", "weight": "400"}
+  ]
+}

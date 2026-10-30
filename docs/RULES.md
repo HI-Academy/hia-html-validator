@@ -1,5 +1,8 @@
 # Detailed validation rules
 
+For a single procedure connecting these rules to fonts, scope, repairs and
+before/after evidence, use [Reproducible validation and repair](VALIDATE_AND_FIX.md).
+
 ## General lesson content contracts
 
 The following rules use shared component selectors or explicit declarations,
@@ -15,6 +18,8 @@ HI Academy lessons; general HTML disables `contentQuality` by default.
 | Inconsistent role sizes across pages | B35-TYPE-001 |
 | Sentence prose versus inline mathematics has a regular/bold emphasis mismatch | B35-TYPE-003 |
 | Approved question and explanation font-family/weight roles | B35-TYPE-004 |
+| Inline maths displaced from prose or separated by excessive gaps | B35-TYPE-005 |
+| Large gaps between method panels and a summary; short callout endings; watermark clutter | B35-COMPOSITION-003/004/005 |
 | Explanation visible before required working is ready | B35-REVEAL-002 |
 | Fragile radical construction / declared SVG bounds | B35-MATH-020, with B35-MATH-019 optical review |
 
@@ -365,7 +370,7 @@ edit inputs or fabricate reviewer approvals.
 | `B35-MATH-018` | A standalone equation is split across HTML/renderer fragments, or is not wholly in the configured complete renderer (MathML by default) | Authoring-contract review warning |
 | `B35-MATH-019` | Radical/fraction-bar strokes lack current visual-review evidence, or an inspectable SVG stroke violates its declared range | Review-required warning; not pixel certification |
 | `B35-MATH-021` | Decimal-looking split tokens, terminal fraction punctuation, or an operator-free trailing three-digit group make numeric grouping ambiguous | Review warning; compare with source, never auto-concatenate operands |
-| `B35-LAYOUT-001` | Matching comparison cards have inconsistent role positions, formula heights or formula typography | Review warning |
+| `B35-LAYOUT-001` | Matching comparison cards have inconsistent edges/heights, corresponding equation rows, role positions or formula typography | Review warning |
 | `B35-LAYOUT-002` | Corresponding card footers, including plain text, differ in base font, size, weight, line-height or padding | Measured-style warning |
 | `B35-LAYOUT-003` | Footer heights/insets differ, or content is not centred under an explicit alignment contract | Geometry/estimated-content warning |
 | `B35-DIAGRAM-001` | Declared fraction-bar geometry/labels contradict the model; also reviews narrowly inferred labelled bars | Declared model error; inferred review warning |
@@ -375,6 +380,10 @@ edit inputs or fabricate reviewer approvals.
 | `B35-CONTENT-001` | A configured answer concept is absent from selected visible premises/context | Bounded-vocabulary review warning |
 | `B35-COMPOSITION-001` | Large panels have low content occupancy or columns leave substantial unused height | Final-state review warning |
 | `B35-COMPOSITION-002` | Related panels have very different densities, or adjacent teaching blocks have insufficient clearance | Final-state review warning |
+| `B35-COMPOSITION-003` | Horizontally overlapping teaching blocks leave excessive vertical space | Final-state review warning |
+| `B35-COMPOSITION-004` | A callout soft-wraps to a very short final line | Final-state review warning |
+| `B35-COMPOSITION-005` | Watermark text geometrically intersects several teaching elements at reviewable opacity | Review warning; pixels/occlusion unverified |
+| `B35-TYPE-005` | Inline mathematical base tokens have a displaced estimated baseline or excessive surrounding spacing | Review warning |
 | `B35-SVG-001` | SVG has a `viewBox` and non-zero geometry; accessible-name check is optional and off by default | Automated |
 | `B35-CONTRAST-001` | Visible direct text meets configured CSS colour contrast ratios outside cards | Warning |
 | `B35-CONTRAST-002` | Card text contrasts with its own nested/painted CSS background | Error |
@@ -637,6 +646,13 @@ Run `npm run test:models -- --lesson /absolute/path/to/Y8_Ch07_Percentages.html`
 The accessible SVG-name check is disabled through `svgAccessibleNameSeverity: "off"`, reflecting the current scope. Contrast checks remain available as visual-legibility checks.
 
 ## Additional automated visual-review rules
+
+The [presentation rules](PRESENTATION_RULES.md) document two-method card and
+equation-row alignment, card explanation prose coverage, inter-block gaps,
+short callout endings, inline mathematical placement and watermark interference.
+They reuse existing font/alignment rules where applicable, and add configurable
+review warnings for the gaps. Presentation policy is lesson-default and opt-in
+for general HTML; geometry never establishes automatic visual approval.
 
 Content-bound checks (`B35-LAYOUT-004` / `005`) use rendered Range fragments for words that wrap across lines, including hyphenated words. They must not measure the entire word at every fragment origin, which invents horizontal overflow. Single-line tokens retain canvas ink estimates; genuinely unbreakable overflow is still reported. Fragment bounds are geometry, not pixel-level glyph certification.
 
