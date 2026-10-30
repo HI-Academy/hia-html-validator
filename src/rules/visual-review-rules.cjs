@@ -137,16 +137,19 @@ function auditVisualReview(config) {
     // before the task or after the final relevant solution beat.
     if(settings.conclusionRevealEnabled!==false){
       const revealStep=node=>{let step=0;for(let n=node;n&&n!==slide.parentElement;n=n.parentElement){const v=Number(n.getAttribute('data-step'));if(Number.isInteger(v)&&v>step)step=v;}return step;};
-      const workings=[...slide.querySelectorAll('.practice-answer,.step-solution,[data-role="answer"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]')].filter(n=>!n.closest('[data-b35-note-role]'));
-      const lastWorking=Math.max(0,...workings.map(revealStep));
-      if(lastWorking>0){
+      const workings=[...slide.querySelectorAll('.practice-answer,.step-solution,.eq,.work,[data-b35-content-role="solution"],[data-role="answer"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]')].filter(n=>!n.closest('[data-b35-note-role]'));
+      if(workings.length){
         for(const note of slide.querySelectorAll('.note,[data-b35-note-role]')){
           if(!visible(note)||note.closest('[data-b35-note-role="preface"]'))continue;
+          const group=note.parentElement?.closest('[data-b35-reveal-group]');
+          const local=group&&slide.contains(group)?workings.filter(node=>group.contains(node)):[];
+          const lastWorking=Math.max(0,...(local.length?local:workings).map(revealStep));
+          if(!lastWorking)continue;
           const role=note.getAttribute('data-b35-note-role'),step=revealStep(note);
           if(step>lastWorking)continue;
           const conclusion=role==='conclusion';
           review('B35-ORDER-005',conclusion?'A conclusion appears before the final solution reveal.':'A note appears before the final solution reveal; confirm its teaching purpose.',note,{
-            kind:conclusion?'early-conclusion':'note-purpose-review',noteRole:role||'unclassified',noteStep:step,lastWorkingStep:lastWorking,
+            kind:conclusion?'early-conclusion':'note-purpose-review',noteRole:role||'unclassified',noteStep:step,lastWorkingStep:lastWorking,workingScope:pathFor(local.length?group:slide),
             expected:'A conclusion appears after relevant answers and working; a prerequisite or question hint can appear earlier.',
             suggestedAction:conclusion?'Reveal this conclusion on a separate step after the last relevant working or answer.':'Review its purpose. Mark conclusions data-b35-note-role="conclusion" and prerequisites data-b35-note-role="preface"; do not automatically hide or delete ambiguous content.',
             limitations:'Checks declared note roles and recognised working/answer containers. It cannot infer instructional meaning from colour or prose; review other reveal engines and dependencies separately.'
@@ -282,7 +285,7 @@ function auditVisualReview(config) {
         return step;
       };
       const excluded='[data-b35-order-independent],[data-b35-ignore-reading-order],[data-b35-note-role="preface"],[data-b35-diagram-role="question"],[data-role="question"],.practice-question,.challenge-box';
-      const workSelector='.step-solution,.practice-answer,.work,[data-role="answer"],[data-b35-content-role="solution"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]';
+      const workSelector='.step-solution,.practice-answer,.eq,.work,[data-role="answer"],[data-b35-content-role="solution"],[data-b35-reveal-role="working"],[data-b35-reveal-role="answer"]';
       const work=[...slide.querySelectorAll(workSelector)].filter(node=>!node.closest(excluded));
       const containers=new Set();
       if(settings.groupedRevealEnabled!==false)for(const node of work)for(let parent=node.parentElement;parent&&parent!==slide;parent=parent.parentElement){
@@ -293,8 +296,11 @@ function auditVisualReview(config) {
         if(container.closest(excluded))continue;
         const rowMode=container.getAttribute('data-b35-reveal-order')==='rows'&&Boolean(container.getAttribute('data-b35-reveal-order-reason')?.trim());
         if(rowMode)continue;
-        const columns=[...container.children].map(node=>({node,rect:boxFor(node),work:work.filter(item=>node.contains(item))}))
-          .filter(item=>item.rect.width>=20&&item.rect.height>=20&&item.work.length>=2);
+        const columns=[...container.children].map(node=>{
+          const working=work.filter(item=>node.contains(item));
+          const notes=[...node.querySelectorAll('.note')].filter(item=>!item.closest(excluded));
+          return {node,rect:boxFor(node),working,work:[...new Set([...working,...notes])]};
+        }).filter(item=>item.rect.width>=20&&item.rect.height>=20&&item.working.length>=1&&item.work.length>=2);
         // Only distinct horizontal teaching groups, not stacked/mobile content
         // or a question figure followed by a solution, imply column completion.
         if(columns.length<2||!columns.some((a,i)=>columns.slice(i+1).some(b=>Math.abs(a.rect.top-b.rect.top)<=rowTolerance&&Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)<=2*scale)))continue;
