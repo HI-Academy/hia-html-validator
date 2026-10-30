@@ -23,9 +23,9 @@ async function main(){
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
     const diagramLabel=style=>wrap('<div class="diagram-frame" style="position:relative;width:300px;height:120px"><span class="diagram-label" style="position:absolute;'+style+'">A diagram label</span></div>');
-    await check('diagram label extending past frame warns',diagramLabel('left:260px;top:20px;white-space:nowrap'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-004')));
-    await check('label within diagram frame passes',diagramLabel('left:20px;top:20px'),none('B35-DIAGRAM-004'));
-    await check('explicit intentional external label is respected',diagramLabel('left:260px;top:20px;white-space:nowrap').replace('class="diagram-label"','class="diagram-label" data-b35-allow-label-outside="callout"'),none('B35-DIAGRAM-004'));
+    await check('diagram label extending past frame warns',diagramLabel('left:260px;top:20px;white-space:nowrap'),xs=>assert.ok(xs.some(x=>x.rule==='B35-DIAGRAM-005')));
+    await check('label within diagram frame passes',diagramLabel('left:20px;top:20px'),none('B35-DIAGRAM-005'));
+    await check('explicit intentional external label is respected',diagramLabel('left:260px;top:20px;white-space:nowrap').replace('class="diagram-label"','class="diagram-label" data-b35-allow-label-outside="callout"'),none('B35-DIAGRAM-005'));
     const notes=(role,step='')=>wrap('<div class="practice-answer" data-step="1" style="visibility:hidden">Answer</div><div class="step-solution" data-step="2" style="visibility:hidden">Working</div><div class="note" '+role+' '+step+'>Teaching note</div>');
     await check('early conclusion warns',notes('data-b35-note-role="conclusion"'),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-005'&&x.evidence.kind==='early-conclusion')));
     await check('unclassified note requests purpose review',notes(''),xs=>assert.ok(xs.some(x=>x.rule==='B35-ORDER-005'&&x.evidence.kind==='note-purpose-review')));

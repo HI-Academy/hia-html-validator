@@ -7,7 +7,7 @@ const { spawnSync } = require('node:child_process');
 const { fingerprint, validatorFingerprint, finalise } = require('../src/core/history.cjs');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'hia history test '));
 const cli = path.resolve(__dirname, '../bin/hia-html-validator.cjs');
-const tests = [];
+const tests = [], skipped = [];
 function test(name, fn) { fn(); tests.push(name); }
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const lines = file => fs.readFileSync(file, 'utf8').trim().split('\n').map(line => JSON.parse(line));
@@ -21,7 +21,7 @@ const html = body => `<!doctype html><html><meta charset="utf-8"><title>History 
 // Isolate the history/orchestration contract from Chromium availability. Actual
 // browser integration remains covered by test-cli.cjs and the profile suites.
 const simulatedRunner = fixture('completed runner.cjs', `
-if (process.argv[1]?.endsWith('/validators/html.cjs')) {
+if (require('node:path').basename(process.argv[1] || '') === 'html.cjs') {
   const fs = require('node:fs'), path = require('node:path');
   const out = process.argv[process.argv.indexOf('--out') + 1];
   const screenshots = process.argv.includes('--no-screenshots') ? [] : [{file:'screenshots/document.png',label:'Synthetic evidence bytes; not a browser image'}];
@@ -33,7 +33,7 @@ if (process.argv[1]?.endsWith('/validators/html.cjs')) {
   process.exit(0);
 }
 `);
-const completedRunner = { env: { ...process.env, NODE_OPTIONS: `--require="${simulatedRunner}"` } };
+const completedRunner = { env: { ...process.env, NODE_OPTIONS: `--require="${simulatedRunner.replace(/\\/g, '/')}"` } };
 try {
   test('fingerprints are stable for object key order and exact for HTML bytes', () => {
     assert.equal(fingerprint({ b: 2, a: 1 }), fingerprint({ a: 1, b: 2 }));
@@ -85,8 +85,8 @@ try {
     const failed = read(path.join(out, 'run.json'));
     assert.equal(failed.status, 'FAILED'); assert.equal(failed.changes.baselineRunId, second.runId);
     assert.ok(lines(path.join(out, 'checks.jsonl')).some(c => c.result === 'ERROR'));
-    const crash = fixture('simulate runner crash.cjs', "if (process.argv[1]?.endsWith('/validators/html.cjs')) process.exit(2);\n");
-    assert.equal(command([input, '--out', out], { env: { ...process.env, NODE_OPTIONS: `--require="${crash}"` } }).status, 2);
+    const crash = fixture('simulate runner crash.cjs', "if (require('node:path').basename(process.argv[1] || '') === 'html.cjs') process.exit(2);\n");
+    assert.equal(command([input, '--out', out], { env: { ...process.env, NODE_OPTIONS: `--require="${crash.replace(/\\/g, '/')}"` } }).status, 2);
     const blocked = read(path.join(out, 'run.json'));
     assert.equal(blocked.status, 'INCOMPLETE'); assert.equal(blocked.changes.baselineRunId, second.runId);
     assert.equal(read(path.join(out, 'report.json')).browser.status, 'BLOCKED');
@@ -94,8 +94,8 @@ try {
     assert.equal(fs.existsSync(path.join(blocked.archive, 'screenshots')), false);
   });
   test('input mutation during the runner is incomplete, never a versioned pass', () => {
-    const mutator = fixture('simulate input change.cjs', "if (process.argv[1]?.endsWith('/validators/html.cjs')) { require('node:fs').appendFileSync(process.argv[2], '<!-- changed -->'); process.exit(2); }\n");
-    assert.equal(command([input, '--out', out], { env: { ...process.env, NODE_OPTIONS: `--require="${mutator}"` } }).status, 2);
+    const mutator = fixture('simulate input change.cjs', "if (require('node:path').basename(process.argv[1] || '') === 'html.cjs') { require('node:fs').appendFileSync(process.argv[2], '<!-- changed -->'); process.exit(2); }\n");
+    assert.equal(command([input, '--out', out], { env: { ...process.env, NODE_OPTIONS: `--require="${mutator.replace(/\\/g, '/')}"` } }).status, 2);
     assert.match(read(path.join(out, 'report.json')).browser.reason, /changed during validation/);
     assert.equal(read(path.join(out, 'run.json')).status, 'INCOMPLETE');
   });
@@ -130,8 +130,11 @@ try {
   });
   test('history cannot overwrite a protected configuration through a symlink', () => {
     const config = fixture('config.json', '{}');
-    const linked = path.join(temporary, 'symlink log'); fs.symlinkSync(config, linked);
-    assert.equal(command([input, '--config', config, '--static-only', '--log', linked, '--out', out]).status, 2);
+    const linked = path.join(temporary, 'symlink log');
+    let symlinkAvailable = true;
+    try { fs.symlinkSync(config, linked); } catch (e) { if (process.platform !== 'win32' || e.code !== 'EPERM') throw e; symlinkAvailable = false; }
+    if (symlinkAvailable) assert.equal(command([input, '--config', config, '--static-only', '--log', linked, '--out', out]).status, 2);
+    else skipped.push('Protected configuration symlink: Windows symlink permission unavailable');
     assert.equal(fs.readFileSync(config, 'utf8'), '{}');
     assert.equal(command([input, '--static-only', '--log', input, '--out', out]).status, 2);
     const hardlink = path.join(temporary, 'hardlinked input log'); fs.linkSync(input, hardlink);
@@ -151,8 +154,10 @@ try {
   test('report output cannot be redirected into archived evidence', () => {
     assert.equal(command([input, '--static-only', '--out', first.archive, '--no-history']).status, 2);
     const redirected = path.join(temporary, 'redirected report'); fs.mkdirSync(redirected);
-    fs.symlinkSync(path.join(first.archive, 'report.json'), path.join(redirected, 'report.json'));
-    assert.equal(command([input, '--static-only', '--out', redirected]).status, 2);
+    let symlinkAvailable = true;
+    try { fs.symlinkSync(path.join(first.archive, 'report.json'), path.join(redirected, 'report.json')); } catch (e) { if (process.platform !== 'win32' || e.code !== 'EPERM') throw e; symlinkAvailable = false; }
+    if (symlinkAvailable) assert.equal(command([input, '--static-only', '--out', redirected]).status, 2);
+    else skipped.push('Archived report symlink: Windows symlink permission unavailable');
     assert.deepEqual(fs.readFileSync(path.join(first.archive, 'report.json')), originalReport);
   });
   test('history can be disabled while per-run metadata and an explicit log remain available', () => {
@@ -207,5 +212,5 @@ try {
     assert.equal(changed.changes.inputChanged, false); assert.equal(changed.documentVersion, initial.documentVersion);
     assert.equal(save({ profile: 'lesson' }).changes.baselineRunId, null);
   });
-  console.log(JSON.stringify({ passed: tests.length, failed: 0, tests, coverage: 'History unit/orchestration tests with a simulated completed runner; actual Chromium integration is in test-cli.cjs.' }, null, 2));
+  console.log(JSON.stringify({ passed: tests.length, failed: 0, tests, skipped, coverage: 'History unit/orchestration tests with a simulated completed runner; actual Chromium integration is in test-cli.cjs.' }, null, 2));
 } finally { fs.rmSync(temporary, { recursive: true, force: true }); }

@@ -98,7 +98,7 @@ function auditVisualReview(config) {
         for(const label of frame.querySelectorAll('.diagram-label,[data-b35-diagram-label]')){
           if(!visible(label)||label.closest('[data-b35-allow-label-outside]'))continue;
           const r=boxFor(label);
-          if(!contains(bounds,r,tolerance))review('B35-DIAGRAM-004','A diagram label extends outside its diagram frame.',label,{
+          if(!contains(bounds,r,tolerance))review('B35-DIAGRAM-005','A diagram label extends outside its diagram frame.',label,{
             kind:'label-outside-frame',frame:pathFor(frame),labelBounds:r,frameBounds:bounds,
             expected:'Diagram labels remain inside their intended frame unless deliberately placed outside.',
             suggestedAction:'Wrap or reposition the label, or enlarge its frame. Keep font readable and preserve the diagram meaning.',

@@ -670,7 +670,7 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
-## Diagram frame label bounds — B35-DIAGRAM-004
+## Diagram frame label bounds — B35-DIAGRAM-005
 
 Visible `.diagram-label` and `[data-b35-diagram-label]` boxes inside `.diagram-frame` or `[data-b35-diagram-frame]` must fit the frame within `visualReview.diagramFrameTolerancePx` (default 2 design pixels). The warning reports the measured frame and label rectangles; wrapping, repositioning or enlarging the frame can repair genuine overflow. An intentionally external callout may use `data-b35-allow-label-outside` after review. This measures the declared HTML frame, not a decorative shape inside it, and cannot prove a bracket points to the correct mathematical token. Existing B35-DIAGRAM-003 target annotations address declared label targets but do not infer mathematical intent; check bracket-to-token relationships visually.
 
