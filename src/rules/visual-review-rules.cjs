@@ -89,6 +89,30 @@ function auditVisualReview(config) {
     };
     const semantic="math,.frac,.katex,mjx-container";
 
+    // Boundary visibility is a review heuristic, not a universal requirement
+    // for borders or a WCAG conformance claim. Never prescribe a card colour.
+    if(settings.cardBoundaryEnabled!==false){
+      const rgba=value=>{const m=/^rgba?\(([^)]+)\)$/.exec(value);if(!m)return null;const n=m[1].split(/[,\s/]+/).filter(Boolean).map(Number);return n.length>=3&&n.every(Number.isFinite)?[n[0],n[1],n[2],n[3]??1]:null;};
+      const over=(a,b)=>{const alpha=a[3]+b[3]*(1-a[3]);return alpha?[...a.slice(0,3).map((x,i)=>(x*a[3]+b[i]*b[3]*(1-a[3]))/alpha),alpha]:[0,0,0,0];};
+      const contrast=(a,b)=>{const luminance=c=>c.slice(0,3).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+      const background=node=>{let color=[0,0,0,0];for(let n=node;n;n=n.parentElement){const s=getComputedStyle(n),c=rgba(s.backgroundColor);if(!c||s.backgroundImage!=='none'||s.filter!=='none'||s.mixBlendMode!=='normal'||Number(s.opacity)<1)return null;color=over(color,c);if(color[3]>=.999)return color;}return over(color,[255,255,255,1]);};
+      const selector=settings.cardBoundarySelectors||'.summary-card,.concept-card,.visual-card,.practice-question,.practice-answer,.step-solution,.qcard,.tcard,.card,[data-b35-content-panel]';
+      for(const card of slide.querySelectorAll(selector)){
+        if(!visible(card)||card.closest('[data-b35-boundary-intent="open-layout"]'))continue;
+        const s=getComputedStyle(card),outer=background(card.parentElement),inner=background(card);
+        if(!outer||!inner||s.boxShadow!=='none'||s.outlineStyle!=='none')continue;
+        const fillRatio=contrast(inner,outer),minimum=settings.cardBoundaryMinimumContrast??1.5;
+        if(fillRatio>=minimum)continue;
+        const edges=['Top','Right','Bottom','Left'].map(side=>{const width=parseFloat(s['border'+side+'Width'])||0,style=s['border'+side+'Style'],color=rgba(s['border'+side+'Color']);const ratio=width>0&&!['none','hidden'].includes(style)&&color?contrast(over(color,outer),outer):1;return {side:side.toLowerCase(),widthPx:width,contrast:ratio};});
+        if(edges.some(e=>e.contrast<minimum))review('B35-LAYOUT-010','Card boundary is missing or faint against a similar background.',card,{
+          kind:'card-boundary-review',fillContrast:fillRatio,minimumContrast:minimum,edges,
+          expected:'A card that needs a visible boundary is distinguished by a readable border, contrasting fill or separately reviewed shadow/outline.',
+          suggestedAction:'Inspect the peer cards. Strengthen the faint edges or use an intentional contrasting fill; no particular colour is required. Mark a genuinely borderless layout data-b35-boundary-intent="open-layout" only after review.',
+          limitations:'Solid CSS colour heuristic; the default 1.5 contrast is a lesson review threshold, not an accessibility standard. Shadows/outlines are left for visual review; gradients, filters, translucent ancestors and image backgrounds are not certified.'
+        });
+      }
+    }
+
     // Native radical joins are renderer-painted, not exposed as DOM geometry.
     // A semantic msqrt therefore cannot silently certify a smooth join.
     if(settings.radicalJoinReviewEnabled!==false){

@@ -654,6 +654,12 @@ npm run test:visual-review -- \
 
 Use `npm test -- --lesson ... --repaired ...` to run all five suites. `--out /absolute/path/to/evidence.json` saves SVG-suite evidence and separate `-models` / `-visual-review` / `-page-pairs` evidence files; the style suite reports its results in the console.
 
+## Card boundary visibility — B35-LAYOUT-010
+
+Visible cards on similar solid backgrounds should have discernible boundaries. The rendered check compares each border side and the card fill with the surrounding background, including transparent CSS colours. A missing/transparent edge or faint border warns when neither border nor fill meets `visualReview.cardBoundaryMinimumContrast` (default 1.5). This is a review heuristic, not a WCAG criterion or a requirement that every card have a border. No specific colour or first-card styling is prescribed.
+
+Default coverage includes summary/concept/visual cards, task and answer cards, worked-step cards and `[data-b35-content-panel]`. `visualReview.cardBoundarySelectors` can override the selection; `cardBoundaryEnabled` disables the check. A reviewed borderless layout may declare `data-b35-boundary-intent="open-layout"`. Existing shadows/outlines are left to visual review rather than rejected solely for missing borders. Gradients, image backgrounds, filters and translucent ancestor compositing are not certified. Findings include fill contrast and measurements for each edge. Do not add exceptions or replace approved colours merely to clear a warning; inspect the rendered card and its peers.
+
 ## Radical hook/overbar continuity — B35-MATH-024
 
 Native `msqrt`/`mroot` semantics do not prove that the renderer draws a smooth join. Visible native roots receive a `native-radical-join-review` warning requiring normal-size and enlarged inspection, even if an older symbol-stroke approval exists. This is a review request, not a claim that every native root is defective. Set `visualReview.radicalJoinReviewEnabled` to false only when deliberately omitting this review coverage; report that limitation.

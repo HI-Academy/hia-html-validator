@@ -22,6 +22,16 @@ async function main(){
       const findings=await page.evaluate(auditVisualReview,options);verify(findings);results.push({name,passed:true,findings});
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
+    const boundary=css=>wrap('<div class="summary-card" style="width:200px;height:120px;'+css+'">Card</div>');
+    await check('faint grey boundary warns',boundary('border:1px solid #cbd5e1;background:white'),xs=>assert.ok(xs.some(x=>x.rule==='B35-LAYOUT-010')));
+    await check('missing boundary on white warns',boundary('background:white'),xs=>assert.ok(xs.some(x=>x.rule==='B35-LAYOUT-010')));
+    await check('readable coloured border passes',boundary('border:1px solid #0e7490;background:white'),none('B35-LAYOUT-010'));
+    await check('contrasting fill needs no border',boundary('background:#1a2b5f;color:white'),none('B35-LAYOUT-010'));
+    await check('shadow is left for visual review',boundary('box-shadow:0 2px 6px #555'),none('B35-LAYOUT-010'));
+    await check('explicit open layout is respected',boundary('').replace('class="summary-card"','class="summary-card" data-b35-boundary-intent="open-layout"'),none('B35-LAYOUT-010'));
+    await check('one missing edge is detected',boundary('border:1px solid #0e7490;border-left:0'),xs=>assert.ok(xs.some(x=>x.rule==='B35-LAYOUT-010')));
+    await check('transparent border is not a visible boundary',boundary('border:1px solid transparent'),xs=>assert.ok(xs.some(x=>x.rule==='B35-LAYOUT-010')));
+    await check('hidden card does not warn',boundary('visibility:hidden'),none('B35-LAYOUT-010'));
     await check('native radical cannot certify smooth hook-bar join',wrap('<math><msqrt><mn>2</mn></msqrt></math>'),xs=>assert.equal(xs.find(x=>x.rule==='B35-MATH-024').evidence.visualAppearanceVerified,false));
     await check('native indexed root also needs join review',wrap('<math><mroot><mn>8</mn><mn>3</mn></mroot></math>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-024')));
     const radicalSvg=(sign,bar='')=>wrap('<svg data-b35-diagram="radical" width="100" height="60">'+sign+bar+'<text x="35" y="40">2</text></svg>');
