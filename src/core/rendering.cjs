@@ -90,6 +90,10 @@ async function fontEvidence(page, config, fonts, loadMode, browserVersion) {
       return [...paths];
     }, config.selectors);
     const session = await page.context().newCDPSession(page);
+    // Chromium's CSS inspector can itself request the top-level file URL and
+    // emit an origin error. Mark only this bounded inspector operation so the
+    // caller can distinguish it from normal lesson resource failures.
+    page.__hiaFontInspectorActive = true;
     try {
       await session.send('DOM.enable'); await session.send('CSS.enable');
       const { root } = await session.send('DOM.getDocument');
@@ -100,7 +104,7 @@ async function fontEvidence(page, config, fonts, loadMode, browserVersion) {
           if (observed.length) result.platformFonts.push({ selector, fonts: observed });
         }
       }
-    } finally { await session.detach(); }
+    } finally { await session.detach(); page.__hiaFontInspectorActive = false; }
     result.status = 'OBSERVED';
   } catch (error) { result.status = 'UNASSESSED'; result.reason = error.message; }
   return result;

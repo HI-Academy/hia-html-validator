@@ -56,8 +56,8 @@ async function run(argv){
    const page=await browser.newPage({viewport:config.viewport,deviceScaleFactor:1,acceptDownloads:false,serviceWorkers:'block'});
    page.on('dialog',d=>d.dismiss().catch(()=>{}));page.on('popup',p=>p.close().catch(()=>{}));
    page.on('pageerror',e=>findings.push(issue('HTML-RUNTIME-001','error',`Page exception: ${e.message}`,null,{},'Correct the failing page script and rerun; missing content may be a consequence.')));
-   page.on('console',m=>{if(m.type()==='error')findings.push(issue('HTML-RUNTIME-002','warning',`Console error: ${m.text()}`,null,{},'Inspect the browser error and its resource/script cause; it may be unrelated to visual layout.'));});
-   page.on('requestfailed',r=>findings.push(issue('HTML-RESOURCE-002',r.url().startsWith('file:')?'error':'warning',`Resource failed: ${r.url()}`,null,{url:r.url(),reason:r.failure()?.errorText},'Check asset paths and network access. --offline intentionally blocks remote assets; visual results may then use fallback fonts.')));
+   page.on('console',m=>{if(m.type()==='error'&&!(page.__hiaFontInspectorActive&&m.text().startsWith('Unsafe attempt to load URL file:')&&m.text().includes("'file:' URLs are treated as unique security origins")))findings.push(issue('HTML-RUNTIME-002','warning',`Console error: ${m.text()}`,null,{},'Inspect the browser error and its resource/script cause; it may be unrelated to visual layout.'));});
+   page.on('requestfailed',r=>{if(!(page.__hiaFontInspectorActive&&r.url()===page.url()&&r.failure()?.errorText==='origin'))findings.push(issue('HTML-RESOURCE-002',r.url().startsWith('file:')?'error':'warning',`Resource failed: ${r.url()}`,null,{url:r.url(),reason:r.failure()?.errorText},'Check asset paths and network access. --offline intentionally blocks remote assets; visual results may then use fallback fonts.'));});
    if(argv.includes('--offline')){await page.route(/^https?:/i,r=>r.abort('blockedbyclient'));await page.routeWebSocket(/.*/,s=>s.close());}
    await loadDocument(page,file,{loadMode,fonts});
    const unsettled=await page.evaluate(async()=>{

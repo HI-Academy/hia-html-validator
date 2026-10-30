@@ -497,9 +497,9 @@ async function runBrowserAudit(context) {
       await page.route(/^https?:/i, route => route.abort("blockedbyclient"));
       await page.routeWebSocket(/.*/, socket => socket.close());
     }
-    page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+    page.on("console", (message) => { if (message.type() === "error" && !(page.__hiaFontInspectorActive && message.text().startsWith('Unsafe attempt to load URL file:') && message.text().includes("'file:' URLs are treated as unique security origins"))) consoleErrors.push(message.text()); });
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    page.on("requestfailed", (request) => failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || "request failed" }));
+    page.on("requestfailed", (request) => { if (!(page.__hiaFontInspectorActive && request.url()===page.url() && request.failure()?.errorText==='origin')) failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || "request failed" }); });
     await loadDocument(page, context.file, { loadMode: context.args.loadMode, fonts });
 
     let guard = 0;
