@@ -92,8 +92,8 @@ function auditVisualReview(config) {
     // MATH-023: find mathematical runs that never entered a maths renderer.
     // Deliberately conservative: single-letter variables/numeric operands and
     // explicit operators, not lone numbers, units, names or ordinary words.
-    const proseScopes='.prompt,.practice-question,.practice-answer,.step-solution,.hint,.note,p,[data-role="question"],[data-role="explanation"]';
-    const term='(?:\\d+(?:\\.\\d+)?[a-zA-Z]?|[a-zA-Z])';
+    const proseScopes='.prompt,.practice-question,.practice-answer,.step-solution,.formula-prose,.diagram-label,.diagram-caption,.hint,.note,p,[data-role="question"],[data-role="explanation"]';
+    const term='(?:\\d+(?:\\.\\d+)?[a-zA-Z]?|[a-z][A-Z]|[a-zA-Z])';
     const unmarkedExpression=new RegExp('(?<![\\w.])'+term+'(?:\\s*(?:[+=×÷−^]|\\s-\\s)\\s*'+term+')+(?!\\w|\\.\\d)','g');
     for(const scope of slide.querySelectorAll(proseScopes)){
       if(!visible(scope))continue;

@@ -23,6 +23,8 @@ async function main(){
     }
     await check("one-line equation passes",wrap('<div class="formula">x + 2 = 4</div>'),none("B35-MATH-015"));
     await check('plain coefficient expression warns',wrap('<p>Factor 9a + 9b.</p>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-MATH-023').evidence.expressions,['9a + 9b']));
+    await check('HTML diagram labels also require semantic maths',wrap('<span class="diagram-label">COUNT BLUE FIRST: 5 + 3 = 8</span>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-023')));
+    await check('formula prose detects coefficient-variable products',wrap('<div class="formula-prose">If N = kA and D = kB, then</div>'),xs=>assert.deepEqual(xs.find(x=>x.rule==='B35-MATH-023').evidence.expressions,['N = kA','D = kB']));
     await check('split inline algebra still warns',wrap('<p>Factor <b>9a</b> + <span>9b</span>.</p>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-023')));
     await check('unmarked equation in explanation warns',wrap('<div class="step-solution">So x + 2 = 4</div>'),xs=>assert.ok(xs.some(x=>x.rule==='B35-MATH-023')));
     await check('semantic algebra preserves English without warning',wrap('<p>Factor <math><mn>9</mn><mi>a</mi><mo>+</mo><mn>9</mn><mi>b</mi></math>.</p>'),none('B35-MATH-023'));
