@@ -111,7 +111,8 @@ function auditVisualReview(config) {
           const declared=node.closest('[data-b35-diagram-role]')?.getAttribute('data-b35-diagram-role');
           // Explicit intent wins over location. A given belongs to the question;
           // an unclassified diagram must not be silently treated as an answer.
-          const role=diagram ? (['question','solution'].includes(declared) ? declared : declared ? 'unknown' : (node.closest('.challenge-box,.practice-question,[data-role="question"]') ? 'question' : 'unknown')) : null;
+          const inQuestion=!!node.closest('.challenge-box,.practice-question,[data-role="question"]');
+          const role=diagram ? (['question','solution'].includes(declared) ? declared : declared ? 'unknown' : (inQuestion ? 'question' : 'unknown')) : inQuestion ? 'question' : null;
           return {node,rect,step,role};
         }).filter(item=>item.rect.width>=20&&item.rect.height>=20);
       const rowTolerance=(settings.boxReadingOrderRowTolerancePx??18)*scale;
