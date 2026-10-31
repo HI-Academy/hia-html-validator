@@ -1,5 +1,13 @@
 # Detailed validation rules
 
+## Unified HI Academy covers — B35-COVER-001
+
+Lesson covers use the owner-approved spacing, typography and four-card component.
+See [cover layout](COVER_LAYOUT.md) for measured tokens, selectors, configuration,
+long-title handling, regression cases and limits. Missing components, unbalanced
+gaps, a shifted/shortened card row or inconsistent card copy roles are errors by
+default. General HTML disables this lesson-specific check.
+
 For a single procedure connecting these rules to fonts, scope, repairs and
 before/after evidence, use [Reproducible validation and repair](VALIDATE_AND_FIX.md).
 

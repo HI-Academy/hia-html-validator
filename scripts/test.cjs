@@ -1,6 +1,8 @@
 "use strict";
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const coverResult=spawnSync(process.execPath,[path.join(__dirname,'../tests/test-cover-layout.cjs')],{stdio:'inherit'});
+if(coverResult.error||coverResult.status!==0)process.exit(coverResult.status||1);
 for (const file of ["test-structure.cjs", "test-display-slides.cjs", "test-answer-sequence.cjs", "test-grouped-reveals.cjs", "test-text-contrast.cjs", "test-svg-formulas.cjs", "test-formula-styles.cjs", "test-visual-models.cjs", "test-visual-review.cjs", "test-presentation.cjs", "test-reproducible.cjs", "test-page-pairs.cjs", "test-complementary.cjs", "test-reusability.cjs", "test-cli.cjs", "test-history.cjs"]) {
   const args = file === "test-formula-styles.cjs" ? [] : process.argv.slice(2);
   const outputIndex = args.indexOf("--out");

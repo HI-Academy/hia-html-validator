@@ -92,6 +92,45 @@ function auditVisualModels(config) {
         header: (slide.querySelector(config.selectors.header)?.textContent || "").trim(), selector: selector(node), evidence });
     };
 
+    // HI Academy's approved cover layout, measured in unscaled design pixels.
+    // Never infer a specific year or chapter from file names or lesson wording.
+    const cover = config.coverLayout;
+    if (cover?.enabled && (slide.matches(cover.selector) || (slides.indexOf(slide) === 0 && slide.querySelector('h1')))) {
+      const scale = scaleFor(slide), origin = slide.getBoundingClientRect();
+      const rect = e => {const r=e.getBoundingClientRect();return {top:(r.top-origin.top)/scale,bottom:(r.bottom-origin.top)/scale,left:(r.left-origin.left)/scale,right:(r.right-origin.left)/scale,height:r.height/scale};};
+      const title=slide.querySelector(cover.titleSelector), subtitle=slide.querySelector(cover.subtitleSelector), program=slide.querySelector(cover.programSelector), group=slide.querySelector(cover.cardsSelector);
+      const report=(kind,message,node,measurements)=>emit('B35-COVER-001',config.policy.coverLayoutSeverity||'error',message,node||slide,{kind,measurements,expected:'Program label, 48px title, balanced 26px gaps, four lower cards ending near y=477 on a 960×540 board.',suggestedAction:'Reuse the maintained cover component. Keep title/subtitle gaps balanced; extend cards downward to the common lower edge. Reflow long titles without shrinking text.',verification:'Render at 960×540 and 1920×1080; check the measured cover and navigation. This checks DOM geometry, not aesthetic pixels or curriculum identity.'});
+      if(!title||!subtitle||!program||!group){report('cover-structure','Cover is missing its Program label, title, subtitle or four-card group.',slide,{title:!!title,subtitle:!!subtitle,program:!!program,cards:!!group});}
+      else {
+        const t=rect(title),sub=rect(subtitle),pr=rect(program),cards=[...group.children].filter(visible),boxes=cards.map(rect),targetBottom=slide.offsetHeight-cover.bottomInsetPx;
+        const gap1=sub.top-t.bottom,gap2=rect(group).top-sub.bottom;
+        if(!program.textContent.trim()||!/(?:chapter|lesson)\s*\d/i.test(program.textContent))report('cover-program','Cover identity must explicitly include Program and Chapter/Lesson, not a bare lesson number.',program,{text:program.textContent.trim()});
+        else if(/^\s*(?:chapter|lesson)\s*\d/i.test(program.textContent))report('cover-program','Cover label omits the Program before its Chapter/Lesson.',program,{text:program.textContent.trim()});
+        if(cards.length!==cover.cardCount)report('cover-card-count','Cover must have four topic cards.',group,{count:cards.length});
+        if(gap1<cover.minimumGapPx||gap1>cover.maximumGapPx||gap2<cover.minimumGapPx||gap2>cover.maximumGapPx||Math.abs(gap1-gap2)>cover.gapBalanceTolerancePx)report('cover-spacing','Title–subtitle and subtitle–cards gaps must be balanced near 26 design pixels.',group,{titleSubtitleGapPx:gap1,subtitleCardsGapPx:gap2});
+        if(t.top-pr.bottom<cover.minimumLabelGapPx||t.top-pr.bottom>cover.maximumLabelGapPx)report('cover-title-position','Title must sit slightly below the Program label.',title,{labelTitleGapPx:t.top-pr.bottom});
+        if(boxes.some(r=>Math.abs(r.bottom-targetBottom)>cover.edgeTolerancePx)||boxes.some(r=>Math.abs(r.top-boxes[0].top)>cover.edgeTolerancePx))report('cover-card-edges','Cover cards must align and extend to the common lower edge, without moving the whole row down.',group,{boxes,targetBottom});
+        const sizes={title:parseFloat(getComputedStyle(title).fontSize),subtitle:parseFloat(getComputedStyle(subtitle).fontSize)};
+        if(Math.abs(sizes.title-cover.titleSizePx)>1||Math.abs(sizes.subtitle-cover.subtitleSizePx)>1)report('cover-type','Cover title/subtitle sizes differ from the approved hierarchy.',title,sizes);
+        if(cards.some(c=>c.scrollHeight>c.clientHeight+1)||boxes.some(r=>r.height<cover.minimumCardHeightPx||r.left<0||r.right>slide.offsetWidth))report('cover-card-fit','Cover topic text must fit readable cards within the board; rebalance a long title.',group,{boxes});
+        if(cover.horizontalInsetPx!==undefined){
+          const g=rect(group), tolerance=cover.edgeTolerancePx;
+          if(Math.abs(g.left-cover.horizontalInsetPx)>tolerance||Math.abs(slide.offsetWidth-g.right-cover.horizontalInsetPx)>tolerance||Math.abs(pr.top-cover.programTopPx)>tolerance||[pr,t,sub].some(r=>Math.abs(r.left-cover.horizontalInsetPx)>tolerance))report('cover-insets','Cover label, titles and cards must share the approved left margin and outer spacing.',group,{program:pr,title:t,subtitle:sub,topics:g});
+          if(boxes.some((r,i)=>i&&Math.abs(r.left-boxes[i-1].right-cover.cardGapPx)>tolerance)||boxes.some(r=>Math.abs((r.right-r.left)-(boxes[0].right-boxes[0].left))>tolerance))report('cover-card-grid','Cover cards must be equal width with 12px gutters.',group,{boxes});
+          const subStyle=getComputedStyle(subtitle),titleStyle=getComputedStyle(title),family=s=>s.fontFamily.split(',')[0].replace(/["']/g,'').trim().toLowerCase();
+          if(Math.abs(parseFloat(subStyle.lineHeight)/parseFloat(subStyle.fontSize)-cover.subtitleLineHeightRatio)>.08||Math.abs(parseFloat(titleStyle.lineHeight)/parseFloat(titleStyle.fontSize)-1.08)>.08||Number(titleStyle.fontWeight)!==900||Number(subStyle.fontWeight)!==800||family(titleStyle)!=='nunito'||family(subStyle)!=='nunito')report('cover-heading-style','Title and subtitle must use Nunito and the shared weight/line-height hierarchy.',title,{titleWeight:titleStyle.fontWeight,titleFamily:titleStyle.fontFamily,subtitleWeight:subStyle.fontWeight,subtitleFamily:subStyle.fontFamily,subtitleLineHeight:subStyle.lineHeight});
+          for(const card of cards){
+            const heading=card.querySelector(cover.cardTitleSelector),text=card.querySelector(cover.cardTextSelector),style=getComputedStyle(card);
+            if(!heading||!text||!heading.textContent.trim()||!text.textContent.trim()){report('cover-card-content','Each cover card needs one topic heading and a concise learning description.',card,{heading:!!heading,text:!!text});continue;}
+            const hStyle=getComputedStyle(heading),pStyle=getComputedStyle(text),gap=rect(text).top-rect(heading).bottom;
+            const measurements={padding:[style.paddingTop,style.paddingRight,style.paddingBottom,style.paddingLeft].map(parseFloat),headingSize:parseFloat(hStyle.fontSize),headingWeight:Number(hStyle.fontWeight),textSize:parseFloat(pStyle.fontSize),textWeight:Number(pStyle.fontWeight),lineHeightRatio:parseFloat(pStyle.lineHeight)/parseFloat(pStyle.fontSize),headingTextGapPx:gap};
+            measurements.headingFamily=hStyle.fontFamily;measurements.textFamily=pStyle.fontFamily;
+            if(measurements.padding.some(n=>Math.abs(n-cover.cardPaddingPx)>1)||Math.abs(measurements.headingSize-cover.cardTitleSizePx)>1||measurements.headingWeight!==900||Math.abs(parseFloat(hStyle.lineHeight)/parseFloat(hStyle.fontSize)-1.25)>.08||Math.abs(measurements.textSize-cover.cardTextSizePx)>1||measurements.textWeight!==800||Math.abs(measurements.lineHeightRatio-cover.cardTextLineHeightRatio)>.08||Math.abs(gap-cover.cardTitleTextGapPx)>2||family(hStyle)!=='nunito'||family(pStyle)!=='nunito')report('cover-card-typography','Cover card headings, descriptions and internal spacing must use the shared Nunito component tokens.',card,measurements);
+          }
+        }
+      }
+    }
+
     // B35-MATH-014: actual numeric MathML glyph boxes, not just the root CSS
     // size. Structural script reduction is allowed above a readable ink floor.
     const fractionSamples = new Map();

@@ -13,6 +13,7 @@ function merge(base,override){
 function configuration(file,profile,viewport){
  let config=clone(defaults);
  if(profile==='html'){
+  config.coverLayout.enabled=false;
   config.lessonReusability.enabled=false;
   config.presentationReview.enabled=false;
   config.viewport={width:1280,height:800};
