@@ -1,6 +1,6 @@
 {
   "name": "hia-html-validator",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "description": "Command-line rendered HTML, SVG and maths checks, with full B35 lesson-deck validation",
   "repository": {
